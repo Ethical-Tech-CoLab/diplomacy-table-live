@@ -3733,10 +3733,10 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-// ðŸŽ¬ Demo Tour â€” self-running walkthrough.
+// 🎬 Demo Tour — self-running walkthrough.
 // No AI calls. Picks a concluded session from the existing list, narrates
 // the UI step-by-step, then replays the transcript by highlighting each move
-// in sequence. Audience can press Esc, click ðŸŽ¬ again, or hit Skip to abort.
+// in sequence. Audience can press Esc, click 🎬 again, or hit Skip to abort.
 const tour = {
   active: false,
   cancelled: false,
@@ -3878,7 +3878,7 @@ async function tourReplayMoves() {
       ? `<div style="margin-top:6px; font-size:11px; color:var(--warn);">Tactics: ${tactics.slice(0, 4).map(t => `<span style="background:rgba(251,191,36,0.15); border:1px solid rgba(251,191,36,0.35); padding:1px 6px; border-radius:3px;">${escapeHtml(t)}</span>`).join(' ')}</div>`
       : '';
     await tourSpotlight(sel, {
-      title: `Round ${m.roundNumber} â€” ${escapeHtml(partyName(m.partyTwin))}`,
+      title: `Round ${m.roundNumber} — ${escapeHtml(partyName(m.partyTwin))}`,
       body: `<i>${escapeHtml(verb)}.</i>${tacticLine}`,
       progress: `replay ${i + 1}/${sample.length}`,
       pad: 4,
@@ -3897,10 +3897,10 @@ async function startDemoTour() {
   try { await loadSessions(); } catch {}
   const demoSess = tourPickDemoSession();
   const banner = document.getElementById('tour-banner');
-  document.getElementById('tour-banner-title').textContent = '\uD83C\uDFAC Diplomacy Table â€” Self-Running Tour';
+  document.getElementById('tour-banner-title').textContent = '\uD83C\uDFAC Diplomacy Table — Self-Running Tour';
   document.getElementById('tour-banner-body').innerHTML = demoSess
-    ? `Replaying <b>${escapeHtml(demoSess.title)}</b> step-by-step.<br/><span style="color:var(--muted); font-size:12px;">No AI calls â€” pure replay of recorded moves. Press <kbd>Esc</kbd> or click \u25A0 to stop.</span>`
-    : `No prior sessions found â€” the tour will only walk through the UI controls.<br/><span style="color:var(--muted); font-size:12px;">Press <kbd>Esc</kbd> or click \u25A0 to stop.</span>`;
+    ? `Replaying <b>${escapeHtml(demoSess.title)}</b> step-by-step.<br/><span style="color:var(--muted); font-size:12px;">No AI calls — pure replay of recorded moves. Press <kbd>Esc</kbd> or click \u25A0 to stop.</span>`
+    : `No prior sessions found — the tour will only walk through the UI controls.<br/><span style="color:var(--muted); font-size:12px;">Press <kbd>Esc</kbd> or click \u25A0 to stop.</span>`;
   document.getElementById('tour-scrim').classList.add('show');
   banner.classList.add('show');
   const okBtn = document.getElementById('tour-banner-ok');
@@ -3919,7 +3919,7 @@ async function startDemoTour() {
   setLeftFlyout(false);
   await tourShow('#pin-left',
     'Sessions drawer',
-    'The \uD83D\uDCCC in the bottom-left opens the <b>Sessions</b> drawer â€” every negotiation lives here.',
+    'The \uD83D\uDCCC in the bottom-left opens the <b>Sessions</b> drawer — every negotiation lives here.',
     3500, { pad: 8 });
   setLeftFlyout(true);
   await tourSleep(400);
@@ -3927,7 +3927,7 @@ async function startDemoTour() {
   // 2. Scenarios button
   await tourShow('#scenarios-btn',
     '\uD83C\uDFAD Scenarios',
-    'A curated library of negotiation cases â€” Iranâ€“US, Aurora vs Borealis supply, etc. Each scenario pre-fills parties, mode, and procedure rules.',
+    'A curated library of negotiation cases — Iran–US, Aurora vs Borealis supply, etc. Each scenario pre-fills parties, mode, and procedure rules.',
     4500, { pad: 6 });
 
   // 3. Teams button
@@ -3947,7 +3947,7 @@ async function startDemoTour() {
     const sItem = document.querySelector(`.s-item[onclick*="${demoSess.id}"]`);
     await tourShow(sItem || '#session-list',
       'Loading a recorded negotiation',
-      `We'll replay <b>${escapeHtml(demoSess.title)}</b> â€” ${demoSess.parties.length} parties Â· ${demoSess.currentRound} rounds Â· status <code>${escapeHtml(demoSess.status)}</code>.`,
+      `We'll replay <b>${escapeHtml(demoSess.title)}</b> — ${demoSess.parties.length} parties · ${demoSess.currentRound} rounds · status <code>${escapeHtml(demoSess.status)}</code>.`,
       4000, { pad: 4 });
     try { await selectSession(demoSess.id); } catch {}
     await tourSleep(700);
@@ -3957,26 +3957,26 @@ async function startDemoTour() {
 
   // 6. Left side picker (Team A persona)
   await tourShow('#left-side .side-header',
-    'Team A â€” left panel',
+    'Team A — left panel',
     'The <b>left badge &amp; picker</b> identify Team A. The \u24D8 button opens their full persona profile; \u270E renames them for this session.',
     4500, { pad: 6 });
 
   // 7. Right side picker (Team B persona)
   await tourShow('#right-side .side-header',
-    'Team B â€” right panel',
+    'Team B — right panel',
     'Same controls on the right for Team B. Each side panel streams that party\'s moves with tactics highlighted in real time.',
     4500, { pad: 6 });
 
   // 8. View As selector
   await tourShow('#viewer-select',
-    'View Asâ€¦ role-aware view',
-    'Switch perspectives at any time â€” the table re-renders showing only what that party would see (their caucus, their advisors, redacted channels).',
+    'View As… role-aware view',
+    'Switch perspectives at any time — the table re-renders showing only what that party would see (their caucus, their advisors, redacted channels).',
     4500, { pad: 6 });
 
   // 9. Center controls
   await tourShow('#negotiation-footer',
     'Live negotiation controls',
-    '<b>\u25B6 Start</b> opens the session Â· <b>\u23ED Next Round</b> advances Â· <b>+ Human Move</b> lets a person interject Â· <b>\u25A0 Conclude</b> ends and triggers the postmortem report.',
+    '<b>\u25B6 Start</b> opens the session · <b>\u23ED Next Round</b> advances · <b>+ Human Move</b> lets a person interject · <b>\u25A0 Conclude</b> ends and triggers the postmortem report.',
     5000, { pad: 6 });
 
   // 10. Replay the transcript
@@ -3991,7 +3991,7 @@ async function startDemoTour() {
   // 11. Inspector
   await tourShow('#pin-right',
     'Inspector drawer',
-    'The \uD83D\uDCCC in the bottom-right opens the <b>Inspector</b> â€” Activity, Tactics, Score, Debate state, and a live console.',
+    'The \uD83D\uDCCC in the bottom-right opens the <b>Inspector</b> — Activity, Tactics, Score, Debate state, and a live console.',
     3500, { pad: 8 });
   setRightFlyout(true);
   await tourSleep(400);
@@ -3999,14 +3999,14 @@ async function startDemoTour() {
   const tacTab = document.querySelector('.flyout-tab-bar button[data-tab="tactics"]');
   if (tacTab) tacTab.click();
   await tourShow(tacTab || '.flyout-tab-bar',
-    'Tactics â€” auto-detection',
+    'Tactics — auto-detection',
     'Every move is scanned for negotiation tactics: anchoring, verification-demand, deadline-pressure, red-line-signaled, counter-anchoring, and more.',
     4500, { pad: 4 });
 
   const scoreTab = document.querySelector('.flyout-tab-bar button[data-tab="score"]');
   if (scoreTab) scoreTab.click();
   await tourShow(scoreTab || '.flyout-tab-bar',
-    'Score â€” outcome metrics',
+    'Score — outcome metrics',
     'When the session concludes, each party gets scored on goal achievement, red-line preservation, and reciprocity.',
     4000, { pad: 4 });
 
@@ -4015,7 +4015,7 @@ async function startDemoTour() {
   await tourSleep(300);
   await tourShow('#review-btn',
     '\uD83D\uDCD3 Session Review',
-    'Opens the full <b>Pre-Planning Â· During Â· Postmortem</b> debrief â€” filtered by your <i>View As</i> role, with an exportable HTML report.',
+    'Opens the full <b>Pre-Planning · During · Postmortem</b> debrief — filtered by your <i>View As</i> role, with an exportable HTML report.',
     4500, { pad: 6 });
 
   // End banner
@@ -4023,7 +4023,7 @@ async function startDemoTour() {
   document.getElementById('tour-spot').classList.remove('show');
   document.getElementById('tour-caption').classList.remove('show');
   document.getElementById('tour-banner-title').textContent = '\uD83C\uDF89 Tour complete';
-  document.getElementById('tour-banner-body').innerHTML = `That's the Diplomacy Table â€” curated scenarios, configurable team personas, live multi-round negotiation, tactic detection, and full postmortem reporting.<br/><br/><span style="color:var(--muted); font-size:12px;">Click \uD83C\uDFAC in the header any time to replay this tour.</span>`;
+  document.getElementById('tour-banner-body').innerHTML = `That's the Diplomacy Table — curated scenarios, configurable team personas, live multi-round negotiation, tactic detection, and full postmortem reporting.<br/><br/><span style="color:var(--muted); font-size:12px;">Click \uD83C\uDFAC in the header any time to replay this tour.</span>`;
   document.getElementById('tour-banner-cancel').style.display = 'none';
   document.getElementById('tour-banner-ok').textContent = 'Close';
   banner.classList.add('show');
