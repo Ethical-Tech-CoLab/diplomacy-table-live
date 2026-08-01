@@ -1,20 +1,26 @@
-# Diplomacy Table — Configuration &amp; Teaching Console
+# Diplomacy Table
 
-**[Open the console](https://ethical-tech-colab.github.io/diplomacy-table-live/)** · An [Ethical Tech CoLab](https://github.com/Ethical-Tech-CoLab) project
+**[Teaching console](https://ethical-tech-colab.github.io/diplomacy-table-live/)** ·
+**[Negotiation app](https://ethical-tech-colab.github.io/diplomacy-table-live/app.html)** ·
+An [Ethical Tech CoLab](https://github.com/Ethical-Tech-CoLab) project
 
-A teaching console for designing and running multi-party AI negotiation simulations. It documents
-the knobs that change how an AI-mediated negotiation behaves, the tactics a detector can and cannot
-see, and the arithmetic behind whether a deal is even possible.
+Tools for designing and running multi-party AI negotiation simulations. Two pages are published here:
 
-**This build has no backend.** It is published as reference material and is fully usable that way —
-most of what it teaches is explanation, not live data. Point it at a running
-[DTSF](https://github.com/Ethical-Tech-CoLab) instance to enable the live panels.
+| Page | What it is | Useful without a backend? |
+|---|---|---|
+| [`index.html`](https://ethical-tech-colab.github.io/diplomacy-table-live/) | **Configuration & Teaching Console.** Documents the knobs that change how an AI-mediated negotiation behaves, the tactics a detector can and cannot see, and the arithmetic behind whether a deal is even possible. | **Yes** — seven of ten tabs are complete offline. |
+| [`app.html`](https://ethical-tech-colab.github.io/diplomacy-table-live/app.html) | **Negotiation control surface.** Runs live sessions: rounds, caucuses, coalitions, tactic detection, debrief reports. | **No** — it is a live control surface. Without a backend it says so and tells you how to connect one. |
+
+**Neither build ships with a backend.** They are published as reference material. Point them at a
+running [DTSF](https://github.com/Ethical-Tech-CoLab) instance to enable the live behaviour.
+
+Start with the console. It is the one that teaches; the app is the one that runs.
 
 ---
 
 ## What works without a backend
 
-Seven of the ten tabs are complete offline:
+Seven of the console's ten tabs are complete offline:
 
 | Tab | What it gives you |
 |---|---|
@@ -30,12 +36,12 @@ The remaining three — **Connect**, **Delegations** and **Bake-off** — need a
 
 ## Connecting to a backend
 
-The console resolves its API base in four steps; the first non-empty value wins.
+Both pages resolve their API base the same way, in four steps; the first non-empty value wins.
 
-1. `?api=` on the URL — `…/diplomacy-table-live/?api=https://your-backend`
+1. `?api=` on the URL — `…/diplomacy-table-live/app.html?api=https://your-backend`
    Ideal for handing a pre-wired link to a class or a panel.
 2. `localStorage['dtsf.apiBase']` — sticky per browser; what the *remember* checkbox writes.
-3. `window.DTSF_API_BASE_DEFAULT` — set in `index.html` at publish time (see below).
+3. `window.DTSF_API_BASE_DEFAULT` — set at publish time (see below).
 4. `window.location.origin` — the same-origin case, when DTSF serves the page itself.
 
 Bearer token resolution mirrors it: `?token=` → `localStorage['dtsf.token']` → none.
@@ -47,7 +53,7 @@ Bearer token resolution mirrors it: `?token=` → `localStorage['dtsf.token']` �
 
 ### Publishing a build wired to an instance
 
-`index.html` carries one line not present in the upstream artefact, immediately after `<title>`:
+Each page carries one line not present in the upstream artefact, immediately after `<title>`:
 
 ```html
 <script>window.DTSF_API_BASE_DEFAULT = '';</script>
@@ -56,32 +62,47 @@ Bearer token resolution mirrors it: `?token=` → `localStorage['dtsf.token']` �
 Empty string means *"there is deliberately no backend at this origin."* The resolver tests for the
 **presence** of the property rather than its truthiness, so `''` is a meaningful value: it holds the
 page in reference-only mode instead of falling through to `window.location.origin` — which on GitHub
-Pages is `github.io`, and would produce a connection error on every live panel.
+Pages is `github.io`, and would produce a connection error on every request.
 
-To wire a build to an instance, set the URL there and republish.
+To wire a build to an instance, run the sync script with `-ApiBase` and republish:
+
+```powershell
+.\sync-from-dtsf.ps1 -DtsfRoot C:\path\to\dtsf -ApiBase https://dtsf.example.org
+```
 
 ## Why a separate repository
 
-The console is a single self-contained HTML file: no build step, no dependencies, no CDN
-references. It runs identically from GitHub Pages, from a local static server, or by double-clicking
-it off disk.
+Both pages are single self-contained HTML files: no build step, no dependencies, no CDN
+references. They run identically from GitHub Pages, from a local static server, or by
+double-clicking them off disk.
 
-The backend it talks to is a much larger private system. Keeping the two apart means the teaching
+The backend they talk to is a much larger private system. Keeping the two apart means the teaching
 material can be public and permanently linkable without widening the backend's exposure, and a
 published console cannot drift out of reach of the people who need to read it just because a server
 is down.
 
 ## Maintenance
 
-The upstream artefact lives in the DTSF monorepo at
-`twins/packs/diplomacy-table/diplomacy-table-config.html` and is served by the runtime at
-`GET /diplomacy-table/config`. To refresh this repo, copy that file over `index.html` and re-add the
-one configuration line described above. `sync-from-dtsf.ps1` does exactly that and verifies the
-result.
+The upstream artefacts live in the DTSF monorepo:
 
-Keeping the two byte-identical apart from that single line is deliberate: it means the console an
-instructor reads on Pages is provably the same page an operator sees when connected to a live
-instance.
+| Published | Upstream | Served by the runtime at |
+|---|---|---|
+| `index.html` | `twins/packs/diplomacy-table/diplomacy-table-config.html` | `GET /diplomacy-table/config` |
+| `app.html` | `twins/packs/diplomacy-table/diplomacy-table-app.html` | `GET /_app/diplomacy-table` |
+
+`sync-from-dtsf.ps1` copies both, re-injects the one configuration line, and refuses to publish a
+build that fails any of its checks.
+
+Keeping each file byte-identical to upstream apart from that single line is deliberate: it means the
+console an instructor reads on Pages is provably the same page an operator sees when connected to a
+live instance.
+
+One of those checks earns its keep. An end-script tag written literally inside a JavaScript comment
+ends the `<script>` element at that point — the HTML tokenizer does not care that it is inside a
+comment — silently dropping every line below it. That shipped here once. A string search will not
+find it and neither will syntax-checking the extracted block, because the extractor stops at the same
+premature tag and hands the checker a truncated fragment that parses cleanly. The script now
+splits blocks the way the tokenizer does and parses each one.
 
 ## License
 
