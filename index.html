@@ -1,0 +1,2733 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Diplomacy Table — Configuration &amp; Teaching Console</title>
+
+<!-- Deployment configuration (GitHub Pages build).
+     The ONLY difference between this file and the copy served by the DTSF
+     runtime. Empty string = "there is deliberately no backend at this origin";
+     resolveBase() tests for the property's presence, not its truthiness. -->
+<script>window.DTSF_API_BASE_DEFAULT = '';</script>
+<style>
+  :root {
+    --bg: #0f1419;
+    --panel: #1a2028;
+    --panel-2: #232a33;
+    --border: #2e3640;
+    --text: #e6eaef;
+    --muted: #8a94a2;
+    --accent: #4a9eff;
+    --left: #4a9eff;
+    --right: #ff8c42;
+    --human: #b57bff;
+    --success: #4ade80;
+    --warn: #fbbf24;
+    --err: #f87171;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 14px; line-height: 1.5; }
+  a { color: var(--accent); }
+  code, pre, .mono { font-family: 'Cascadia Code', Consolas, 'SF Mono', Menlo, monospace; }
+  code { background: var(--panel-2); border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; font-size: 12px; }
+  pre { background: #0b0f14; border: 1px solid var(--border); border-radius: 8px; padding: 12px; overflow-x: auto;
+    font-size: 12px; line-height: 1.45; }
+  button, select, input, textarea { font-family: inherit; font-size: 13px; }
+  button { background: var(--panel-2); color: var(--text); border: 1px solid var(--border); border-radius: 6px;
+    padding: 6px 12px; cursor: pointer; }
+  button:hover:not(:disabled) { border-color: var(--accent); }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #06121f; font-weight: 600; }
+  button.danger { border-color: var(--err); color: var(--err); }
+  button.sm { padding: 3px 8px; font-size: 11px; }
+  input, select, textarea { background: var(--panel-2); color: var(--text); border: 1px solid var(--border);
+    border-radius: 6px; padding: 6px 9px; }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
+  textarea { width: 100%; resize: vertical; }
+
+  header { position: sticky; top: 0; z-index: 20; background: var(--panel); border-bottom: 1px solid var(--border);
+    padding: 10px 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  header h1 { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: 0.01em; }
+  header .sub { font-size: 11px; color: var(--muted); }
+  header .spacer { flex: 1; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; padding: 3px 10px;
+    border-radius: 999px; border: 1px solid var(--border); background: var(--panel-2); white-space: nowrap; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+  .dot.ok { background: var(--success); } .dot.bad { background: var(--err); } .dot.warn { background: var(--warn); }
+
+  nav { position: sticky; top: 49px; z-index: 19; display: flex; gap: 4px; padding: 6px 16px; background: var(--bg);
+    border-bottom: 1px solid var(--border); overflow-x: auto; }
+  nav button { background: transparent; border: 1px solid transparent; color: var(--muted); border-radius: 6px;
+    padding: 5px 11px; font-size: 12px; white-space: nowrap; }
+  nav button.active { color: var(--text); background: var(--panel-2); border-color: var(--accent); }
+
+  main { max-width: 1180px; margin: 0 auto; padding: 20px 16px 80px; }
+  section.tab { display: none; }
+  section.tab.active { display: block; }
+  h2 { font-size: 18px; margin: 0 0 4px; }
+  h3 { font-size: 14px; margin: 22px 0 6px; color: var(--text); }
+  h4 { font-size: 12px; margin: 14px 0 4px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+  p.lede { color: var(--muted); margin: 0 0 16px; max-width: 82ch; }
+
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px;
+    margin: 0 0 14px; }
+  .card > :first-child { margin-top: 0; }
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+  .grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .field { display: flex; flex-direction: column; gap: 3px; margin-bottom: 10px; }
+  .field label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .field .hint { font-size: 11px; color: var(--muted); }
+  .hint { font-size: 11.5px; color: var(--muted); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th, td { text-align: left; padding: 7px 9px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;
+    position: sticky; top: 0; background: var(--panel); }
+  tbody tr:hover { background: rgba(74,158,255,0.05); }
+  .tbl-wrap { max-height: 620px; overflow: auto; border: 1px solid var(--border); border-radius: 8px;
+    background: var(--panel); }
+
+  .tag { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 4px; border: 1px solid var(--border);
+    background: var(--panel-2); color: var(--muted); margin-right: 4px; }
+  .tag.good { color: var(--success); border-color: rgba(74,222,128,0.4); }
+  .tag.warn { color: var(--warn); border-color: rgba(251,191,36,0.4); }
+  .tag.bad { color: var(--err); border-color: rgba(248,113,113,0.4); }
+  .tag.info { color: var(--accent); border-color: rgba(74,158,255,0.4); }
+
+  .note { border-left: 3px solid var(--accent); background: rgba(74,158,255,0.07); padding: 9px 12px;
+    border-radius: 0 6px 6px 0; margin: 10px 0; font-size: 13px; }
+  .note.warn { border-left-color: var(--warn); background: rgba(251,191,36,0.07); }
+  .note.bad { border-left-color: var(--err); background: rgba(248,113,113,0.07); }
+  .note.good { border-left-color: var(--success); background: rgba(74,222,128,0.07); }
+
+  ol, ul { padding-left: 20px; margin: 6px 0; }
+  li { margin: 3px 0; }
+  .steps { counter-reset: s; list-style: none; padding-left: 0; }
+  .steps > li { counter-increment: s; position: relative; padding-left: 30px; margin: 10px 0; }
+  .steps > li::before { content: counter(s); position: absolute; left: 0; top: 1px; width: 20px; height: 20px;
+    border-radius: 50%; background: var(--panel-2); border: 1px solid var(--accent); color: var(--accent);
+    font-size: 11px; display: flex; align-items: center; justify-content: center; font-weight: 700; }
+
+  .kv { display: grid; grid-template-columns: 190px 1fr; gap: 4px 12px; font-size: 12.5px; }
+  .kv dt { color: var(--muted); }
+  .kv dd { margin: 0; }
+
+  .log { background: #0b0f14; border: 1px solid var(--border); border-radius: 8px; padding: 10px; font-size: 11.5px;
+    max-height: 260px; overflow: auto; white-space: pre-wrap; word-break: break-word; }
+  .log .line { padding: 1px 0; }
+  .log .ts { color: var(--muted); margin-right: 6px; }
+  .log .ok { color: var(--success); } .log .bad { color: var(--err); } .log .warn { color: var(--warn); }
+  .log .l-ok { color: var(--success); } .log .l-err { color: var(--err); } .log .l-warn { color: var(--warn); }
+  .log .l-dim { color: var(--muted); }
+
+  .offline-only { display: none; }
+  body.offline .offline-only { display: block; }
+  body.offline .online-only { opacity: 0.5; pointer-events: none; }
+
+  .chk { display: flex; align-items: flex-start; gap: 8px; padding: 5px 0; border-bottom: 1px solid var(--border); }
+  .chk input { margin-top: 3px; width: auto; }
+  .chk > span { font-size: 12.5px; }
+  .chk .t { font-size: 12.5px; }
+  .chk .d { font-size: 11px; color: var(--muted); }
+
+  footer { max-width: 1180px; margin: 0 auto; padding: 0 16px 40px; color: var(--muted); font-size: 11.5px; }
+  @media print {
+    nav, header .spacer, button { display: none !important; }
+    body, html { background: #fff; color: #000; }
+    section.tab { display: block !important; page-break-before: always; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Diplomacy Table — Configuration &amp; Teaching Console</h1>
+    <div class="sub">DTSF &middot; multi-agent negotiation simulator &middot; instructor / operator surface</div>
+  </div>
+  <div class="spacer"></div>
+  <span class="pill" id="connPill"><span class="dot" id="connDot"></span><span id="connText">not connected</span></span>
+  <button class="sm" id="btnQuickConnect">Connection</button>
+</header>
+
+<nav id="tabs">
+  <button data-tab="connect" class="active">Connect</button>
+  <button data-tab="architecture">Architecture</button>
+  <button data-tab="knobs">Knobs</button>
+  <button data-tab="models">Models</button>
+  <button data-tab="tactics">Tactics &amp; Goals</button>
+  <button data-tab="scenario">Scenario</button>
+  <button data-tab="delegations">Delegations</button>
+<button data-tab="zopa">ZOPA</button>
+  <button data-tab="bakeoff">Bake-off</button>
+  <button data-tab="runbook">Runbook (AWC)</button>
+</nav>
+
+<main>
+<!-- ══════════════════ CONNECT ══════════════════ -->
+<section class="tab active" id="tab-connect">
+  <h2>Connect this page to a DTSF backend</h2>
+  <p class="lede">
+    This page is a static file. It can be served three ways &mdash; from the DTSF runtime itself
+    (<code>GET /diplomacy-table/config</code>), from a GitHub Pages site, or straight off disk
+    (<code>file://</code>). In all three cases it talks to a DTSF backend over plain CORS-enabled HTTP.
+    Everything on the Architecture, Knobs, Models, Tactics, Scenario, Delegations and Runbook tabs works
+    with no backend at all; only the live probes and the Bake-off runner need a connection.
+  </p>
+
+  <div class="grid2">
+    <div class="card">
+      <h3 style="margin-top:0">Backend</h3>
+      <div class="field">
+        <label for="apiBase">API base URL</label>
+        <input id="apiBase" placeholder="https://diplomacy.example.org" autocomplete="off" spellcheck="false" />
+        <span class="hint">Origin only &mdash; no trailing slash, no <code>/diplomacy-table</code> suffix.</span>
+      </div>
+      <div class="field">
+        <label for="apiToken">Bearer token (optional)</label>
+        <input id="apiToken" type="password" placeholder="leave blank if the backend is unauthenticated" autocomplete="off" />
+        <span class="hint">Sent as <code>Authorization: Bearer &lt;token&gt;</code>. Stored in this browser only.</span>
+      </div>
+      <div class="row">
+        <button class="primary" id="btnConnect">Connect &amp; probe</button>
+        <button id="btnUseOrigin">Use this origin</button>
+        <button id="btnLocal">localhost:8080</button>
+        <button class="danger" id="btnForget">Forget</button>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <label class="hint" style="display:flex;gap:6px;align-items:center">
+          <input type="checkbox" id="chkRemember" checked style="width:auto" /> remember in this browser
+        </label>
+        <button class="sm" id="btnShareLink">Copy shareable link</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0">Resolution order</h3>
+      <p class="hint" style="margin:0 0 8px">
+        The same four-step resolver is used by every Diplomacy Table page. First non-empty value wins.
+      </p>
+      <ol style="font-size:12.5px">
+        <li><code>?api=</code> query parameter &mdash; wins over everything; ideal for handing a
+            pre-wired link to a class or a panel.</li>
+        <li><code>localStorage['dtsf.apiBase']</code> &mdash; sticky per browser; what the
+            <em>remember</em> checkbox writes.</li>
+        <li><code>window.DTSF_API_BASE_DEFAULT</code> &mdash; a one-line
+            <code>&lt;script&gt;</code> injected at publish time, so a Pages deployment ships already
+            pointed at the convening backend. Tested with <code>in</code> rather than for truthiness,
+            so publishing it as <code>''</code> is a valid, explicit "no backend here" &mdash; which is
+            what a reference-only Pages build should ship. Without it the resolver would fall through
+            to the Pages origin and report connection errors against <code>github.io</code>.</li>
+        <li><code>window.location.origin</code> &mdash; the same-origin case, i.e. the page was served
+            by the DTSF runtime. On <code>file://</code> this yields no base and the page stays in
+            reference-only mode.</li>
+      </ol>
+      <p class="hint" style="margin:8px 0 0">
+        Token resolution mirrors it: <code>?token=</code> &rarr; <code>localStorage['dtsf.token']</code> &rarr; none.
+      </p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">What the token is, and what it is not</h3>
+    <p style="margin-top:0">
+      The backend reads <code>DTSF_AUTH_TOKEN</code> from its environment. If that variable is unset the
+      instance is completely open and the token field here is ignored &mdash; which is the right posture on a
+      laptop and the wrong one on anything with a public hostname. When it <em>is</em> set, every route
+      requires <code>Authorization: Bearer &lt;token&gt;</code> except four deliberate exceptions.
+    </p>
+    <div class="tbl-wrap" style="max-height:none">
+      <table>
+        <thead><tr><th style="width:34%">Path</th><th>Why it stays public</th></tr></thead>
+        <tbody>
+          <tr><td><code>/_health</code>, <code>/_ready</code></td>
+              <td>Load balancers, uptime monitors and container orchestrators probe these without
+                  credentials. Gating them means the platform declares a healthy box dead.</td></tr>
+          <tr><td><code>/_version</code></td>
+              <td>Build identity only. Useful when someone needs to tell you what they are running before
+                  they can authenticate.</td></tr>
+          <tr><td><code>/diplomacy-table/config</code></td>
+              <td>This page. It is the thing that collects the token, so requiring the token to load it
+                  would deadlock the bootstrap. It ships no data &mdash; every call it makes is gated.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="note warn" style="margin-top:10px">
+      <b>Consequence worth internalising before a demo:</b> because <code>/_health</code> is public, a green
+      status pill proves only that the host is alive. It does not prove your credential works. That is why
+      this console probes a gated route as part of connecting, and reports
+      <em>token rejected</em> separately from <em>unreachable</em>.
+    </div>
+    <div class="note bad" style="margin-top:10px">
+      <b>Limits, stated plainly.</b> This is one shared secret, not identity. There are no roles, no per-user
+      revocation and no audit trail; everyone holding it is an administrator. A token handed to a browser is
+      not secret from the person driving that browser. Critically, it does <em>not</em> enforce the
+      Constitution&rsquo;s isolation invariant &mdash; a holder can read any delegation&rsquo;s private mandate at
+      <code>/diplomacy-team-*</code>. If participants need their own seats, put path rules in the reverse
+      proxy (see the Caddyfile in <code>docs/diplomacy/DESIGN.md</code>) rather than relying on this alone.
+    </div>
+    <p class="hint" style="margin-bottom:0">
+      Rotation is a restart: change the environment variable and bounce the process. Shareable links from
+      this page deliberately omit the token, so rotating does not invalidate a link &mdash; only the credential
+      pasted alongside it.
+    </p>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">Live status</h3>
+    <div class="row" style="margin-bottom:10px">
+      <button id="btnRefreshStatus">Refresh all</button>
+      <button id="btnProbeProviders">Probe providers</button>
+      <button id="btnLoadModels">Load model catalog</button>
+      <button id="btnLoadScenarios">Load scenarios</button>
+      <button id="btnDegraded">Check degraded parties</button>
+    </div>
+    <div class="grid3" id="statusCards"></div>
+    <h4>Probe log</h4>
+    <div class="log" id="connLog">Not connected. Enter an API base and press <b>Connect &amp; probe</b>.</div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">Deployment shapes</h3>
+    <div class="tbl-wrap" style="max-height:none">
+      <table>
+        <thead><tr><th>Shape</th><th>Frontend</th><th>Backend</th><th>Good for</th><th>Watch out for</th></tr></thead>
+        <tbody>
+          <tr><td><b>All-in-one</b></td><td>served by DTSF at <code>/_app/diplomacy-table</code></td>
+              <td>same process</td><td>local dev, single-laptop demo</td>
+              <td>nothing to publish; nobody outside the room can watch</td></tr>
+          <tr><td><b>Pages + tunnel</b></td><td>GitHub Pages (Ethical-Tech-Colab)</td>
+              <td>B3IQ box behind Cloudflare Tunnel / Caddy</td>
+              <td>the recommended live-convening shape</td>
+              <td>backend must stay up; needs TLS + an auth story</td></tr>
+          <tr><td><b>Pages + replay</b></td><td>GitHub Pages</td>
+              <td>none &mdash; static JSON transcript bundles</td>
+              <td>public, permanent, zero-cost archive of a completed convening</td>
+              <td>read-only; no new rounds</td></tr>
+          <tr><td><b>Cloud PaaS</b></td><td>Pages or the PaaS itself</td>
+              <td>Render / Azure Container Apps</td>
+              <td>always-on demo without owning hardware</td>
+              <td>cold starts drop in-memory state; per-token cost is on you</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="hint" style="margin-bottom:0">Full comparison, threat model and B3IQ topology: <code>docs/diplomacy/DESIGN.md</code> &sect;4.</p>
+  </div>
+</section>
+
+<!-- ══════════════════ ARCHITECTURE ══════════════════ -->
+<section class="tab" id="tab-architecture">
+  <h2>What is actually running</h2>
+  <p class="lede">
+    Ten minutes of orientation before anyone touches a knob. This is the mental model that makes the rest
+    of the console legible: a neutral table twin that owns procedure and the record, and N delegation twins
+    that own only their own instructions and their own words.
+  </p>
+
+  <div class="card">
+    <h3 style="margin-top:0">The two kinds of twin</h3>
+    <div class="grid2">
+      <div>
+        <h4>Table twin &mdash; <code>diplomacy-table</code></h4>
+        <ul>
+          <li>Owns the <b>session</b>: parties, rules, round counter, status.</li>
+          <li>Owns the <b>record</b>: every move, every detected tactic, every debrief.</li>
+          <li>Runs the <b>speaking order</b> and the <b>quality guards</b>.</li>
+          <li>Is the <b>only</b> component that sees all delegations' private instructions.
+              It never leaks them into another delegation's prompt.</li>
+          <li>Has no model of its own for the negotiation turns.</li>
+        </ul>
+      </div>
+      <div>
+        <h4>Delegation twins &mdash; <code>diplomacy-team-*</code></h4>
+        <ul>
+          <li>Own a <b>persona</b>, <b>goals</b>, <b>red lines</b>, a <b>BATNA</b> and a <b>tactic set</b>.</li>
+          <li>Expose one meaningful endpoint: <code>POST /turn</code>.</li>
+          <li>Receive a windowed transcript plus a structured memory block; return a JSON move.</li>
+          <li>Are told which model to use <em>per session</em> &mdash; the pack does not hard-code one.</li>
+          <li>Never see another delegation's red lines, BATNA or private guidance.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">One round, step by step</h3>
+    <ol class="steps">
+      <li><b>Guard the call.</b> <code>POST /sessions/:id/round/next</code> refuses if the session is not
+          <code>active</code>, if the round cap is hit, or if a human party still owes a move.</li>
+      <li><b>Compute speaking order.</b> Honours <code>openerPartyTwin</code> and <code>rotateOpener</code>.
+          Coalitions with a whip collapse to a single speaking slot.</li>
+      <li><b>Classify each slot</b> as <span class="tag">speaking</span> <span class="tag">skipped</span>
+          <span class="tag">twin-already-moved</span> <span class="tag">human-recorded</span>
+          <span class="tag">human-awaiting</span>. Only <em>speaking</em> slots call a model.</li>
+      <li><b>Call each delegation in sequence.</b> Deliberately sequential: the transcript accumulates
+          <em>during</em> the round, so speaker 3 answers what speakers 1 and 2 just said. A parallel
+          version was tried and reverted &mdash; it produced round-robin monologue and a high timeout rate.</li>
+      <li><b>Run the guard ladder</b> on each returned move: stub detector &rarr; opponent-echo &rarr;
+          self-echo. Each failure buys one anti-mirror retry; persistent failure records a flagged
+          placeholder move and increments a degraded counter.</li>
+      <li><b>Detect tactics</b> with the rule engine and attach them to the move.</li>
+      <li><b>Advance the round</b> and persist. The table's state is snapshotted to disk on a timer.</li>
+    </ol>
+    <div class="note">
+      <b>Teaching point.</b> Almost every "the AI is being dumb" complaint traces to step 4 or 5, not to the
+      model. A delegation that repeats itself is usually being fed a transcript window that is too small
+      (so it cannot see its own last move) or too large (so its instructions are drowned). See the
+      <b>Knobs</b> tab, <code>maxInputTokens</code>.
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">Request path in a Pages deployment</h3>
+<pre>  browser (GitHub Pages, Ethical-Tech-Colab)
+      |  fetch(apiBase + '/diplomacy-table/...')   CORS: Access-Control-Allow-Origin: *
+      v
+  edge / tunnel  (Cloudflare Tunnel or Caddy on the B3IQ box)
+      |  TLS terminates here; add auth here, not in the browser
+      v
+  DTSF runtime  (single Node process, tsx)
+      |-- /diplomacy-table/*   table twin: sessions, moves, tactics, reports
+      |-- /diplomacy-team-*/*  delegation twins: /turn
+      |-- /ollama/*            provider registry + OpenAI-compatible passthrough
+      |-- /_proxy, /_cache     inbound rate-limit shield, response cache
+      |-- /_health, /_version  liveness
+      v
+  model backends: local weights on the B3IQ GPU, and/or a hosted API
+</pre>
+    <div class="note warn">
+      <b>Structural constraint.</b> The runtime makes cross-twin calls to
+      <code>http://localhost:${PORT}</code>. The table twin and every delegation twin must therefore live in
+      the <em>same</em> process. You scale by making the box bigger or by running independent whole
+      instances, not by splitting twins across nodes. This is the single largest architectural
+      assumption in the system.
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">State &amp; durability</h3>
+    <dl class="kv">
+      <dt>Where state lives</dt><dd>In-process <code>Map</code> per twin. Fast, simple, and volatile.</dd>
+      <dt>Durability</dt><dd>Periodic snapshots to <code>evidence/sessions/&lt;timestamp&gt;/</code>, plus a
+        final snapshot on graceful shutdown. On boot the runtime restores the most recent readable snapshot.</dd>
+      <dt>What this means</dt><dd>A hard kill between snapshots loses the moves since the last one.
+        Before a graded exercise, take a manual snapshot and shorten the interval.</dd>
+      <dt>Not present</dt><dd>No database, no WebSocket for the negotiation feed (the console polls),
+        no per-user accounts, no row-level authorisation.</dd>
+    </dl>
+  </div>
+</section>
+
+<!-- ══════════════════ KNOBS ══════════════════ -->
+<section class="tab" id="tab-knobs">
+  <h2>Knobs &mdash; what to turn, and what it does to the negotiation</h2>
+  <p class="lede">
+    Every knob below is real: it exists in the session payload, in a party record, in a delegation's
+    fixture, or as an environment variable on the runtime. Each entry says where it lives, what the
+    default is, what it mechanically changes, and &mdash; the part that matters for teaching &mdash; what
+    it does to the <em>negotiation</em>. Use the filter to build a lesson around one dimension at a time.
+  </p>
+
+  <div class="card">
+    <div class="row">
+      <input id="knobSearch" placeholder="filter knobs&hellip;" style="flex:1;min-width:200px" />
+      <select id="knobGroup"><option value="">all groups</option></select>
+      <select id="knobImpact">
+        <option value="">any impact</option>
+        <option value="high">high impact</option>
+        <option value="medium">medium impact</option>
+        <option value="low">low impact</option>
+      </select>
+      <span class="hint" id="knobCount"></span>
+    </div>
+  </div>
+
+  <div class="tbl-wrap">
+    <table id="knobTable">
+      <thead><tr>
+        <th style="width:20%">Knob</th><th style="width:13%">Where</th><th style="width:11%">Default</th>
+        <th style="width:28%">Mechanical effect</th><th style="width:28%">Effect on the negotiation &mdash; teach this</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <h3>Guided experiments</h3>
+  <p class="hint" style="margin-top:0">
+    Each experiment isolates one variable. Run the same scenario twice, change only the named knob, and
+    compare the outcome scoreboard and the tactic ledger. Twenty minutes each; all of them produce a
+    result students can argue about.
+  </p>
+  <div class="grid2" id="experiments"></div>
+</section>
+
+<!-- ══════════════════ MODELS ══════════════════ -->
+<section class="tab" id="tab-models">
+  <h2>Which model for which job</h2>
+  <p class="lede">
+    The system does not have "an AI". It has four distinct model jobs with genuinely different
+    requirements, and the most common configuration mistake is using one model for all of them.
+    Choosing per job is the cheapest quality win available.
+  </p>
+
+  <div class="card">
+    <div class="tbl-wrap" style="max-height:none">
+      <table>
+        <thead><tr><th style="width:15%">Job</th><th style="width:26%">What it has to do</th>
+          <th style="width:25%">What actually matters</th><th style="width:34%">Guidance</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><b>Delegation turn</b><br /><span class="tag info">hot path</span></td>
+            <td>Read a windowed transcript, stay in character, advance a position, emit valid JSON, in
+                under the round timeout.</td>
+            <td>Instruction adherence, JSON reliability, <b>latency</b>, persona stability. Raw
+                reasoning depth is close to irrelevant.</td>
+            <td>A mid-size instruct/chat model. This is called N&times; per round with humans watching, so
+                a 6&nbsp;s model that is 90&nbsp;% as good beats a 60&nbsp;s model that is 100&nbsp;%.
+                <span class="tag bad">anti-pattern</span> reasoning models here &mdash; they burn the token
+                budget on hidden thinking, ignore the JSON response-format hint, and blow the timeout.</td>
+          </tr>
+          <tr>
+            <td><b>Convener / chair</b></td>
+            <td>Summarise the round, name convergence and divergence, propose the next agenda item.</td>
+            <td>Long-context comprehension and neutrality. Runs once per round, off the critical path.</td>
+            <td>The largest context window you can afford. Latency tolerance here is high, so this is the
+                right place to spend on a stronger model.</td>
+          </tr>
+          <tr>
+            <td><b>Tactic judge</b><br /><span class="tag warnt">not yet wired</span></td>
+            <td>Read a move and decide whether a tactic was genuinely used.</td>
+            <td>Calibration and restraint &mdash; the ability to answer "no tactic" confidently.</td>
+            <td>Today detection is 100&nbsp;% rule-based (regex + sequence). A judge model is the intended
+                upgrade; it must run asynchronously so it never delays a round.</td>
+          </tr>
+          <tr>
+            <td><b>Debrief / after-action</b></td>
+            <td>Produce per-party and convener after-action reports from the full transcript.</td>
+            <td>Long context, analytic writing, willingness to be critical.</td>
+            <td>Runs once, at the end, unobserved. Use the strongest model available; a reasoning model is
+                appropriate <em>here</em> and nowhere else in the loop.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <h3>Model classes and their token budgets</h3>
+  <p class="hint" style="margin-top:0">
+    The delegation twin classifies whatever model name you give it into one of these classes, then sizes
+    the verbatim transcript window to fit. Reserved overhead per call: ~600 tokens of system prompt,
+    ~700 tokens of structured memory, ~400 tokens of headroom. A transcript move averages ~134 tokens.
+  </p>
+  <div class="tbl-wrap" style="max-height:none">
+    <table id="classTable">
+      <thead><tr><th>Class</th><th>Matches</th><th>Input cap</th><th>Max verbatim moves</th>
+        <th>Usable window</th><th>Consequence</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  <div class="note">
+    <b>Read the fourth column, not the third.</b> A 4&nbsp;000-token cap sounds generous until you subtract
+    1&nbsp;700 tokens of fixed overhead and discover the delegation can only see its last few moves.
+    That is precisely the condition under which self-echo guards start firing. If a party keeps
+    repeating itself, raise its <code>maxInputTokens</code> or move it to a larger class before you touch
+    the prompt.
+  </div>
+
+  <h3>Live model catalog</h3>
+  <div class="card online-only">
+    <div class="row" style="margin-bottom:8px">
+      <button id="btnModelsRefresh">Fetch catalog</button>
+      <input id="modelFilter" placeholder="filter models&hellip;" style="flex:1;min-width:180px" />
+      <span class="hint" id="modelCount"></span>
+    </div>
+    <div class="tbl-wrap" style="max-height:340px">
+      <table id="modelTable">
+        <thead><tr><th>Model id</th><th>Inferred class</th><th>Reasoning?</th><th>Verbatim moves</th><th>Suggested job</th></tr></thead>
+        <tbody><tr><td colspan="5" class="hint">Not loaded.</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+  <div class="note offline-only">No backend connected &mdash; the live catalog is unavailable. Everything else on this tab is static reference material.</div>
+
+  <h3>Failover ladder</h3>
+  <div class="card">
+    <p style="margin-top:0">When a delegation's primary model fails, the twin does not simply error. It walks a ladder:</p>
+    <ol class="steps">
+      <li><b>Primary model.</b> Called with a window sized for its class.</li>
+      <li><b>Fallback model</b>, if the failure is retryable: payload-too-large, a 5xx, a network fault, a
+          content-filter rejection, or a rate limit with a long retry-after. The transcript window is
+          <em>re-sized</em> for the fallback's class before the retry.</li>
+      <li><b>Automatic non-filtered fallback.</b> If a hosted content filter rejected the call and no
+          operator fallback was configured, the twin routes to a large open-weights instruct model on its
+          own initiative.</li>
+      <li><b>Stub move.</b> Last resort: a flagged placeholder is recorded so the round can complete, and
+          the party's degraded counter increments.</li>
+    </ol>
+    <div class="note warn">
+      <b>Content filters and geopolitics.</b> Realistic crisis scenarios &mdash; strikes, sanctions,
+      hostages, escalation &mdash; routinely trip hosted safety filters. Step 3 exists because of exactly
+      this. For an Army War College-style scenario, configure an explicit unfiltered or self-hosted
+      fallback per party in advance rather than discovering the problem in front of the room.
+    </div>
+  </div>
+
+  <h3>Configuration anti-patterns</h3>
+  <div class="grid2">
+    <div class="card"><h4 style="margin-top:0">Same model, both sides, same settings</h4>
+      <p style="margin:0">Produces uncanny symmetry: parties converge on identical phrasing and the
+      self-/opponent-echo guards fire constantly. It is also bad pedagogy &mdash; students conclude the
+      simulation is scripted. Vary at least the persona and preferably the model.</p></div>
+    <div class="card"><h4 style="margin-top:0">Reasoning model on the hot path</h4>
+      <p style="margin:0">Temperature is forced, the JSON response-format hint is suppressed, the completion
+      budget balloons, and timeouts follow. Save reasoning models for debriefs.</p></div>
+    <div class="card"><h4 style="margin-top:0">Tiny model with a big transcript</h4>
+      <p style="margin:0">Instructions get pushed out of attention by transcript. The delegation drifts
+      out of character around round 4. Lower <code>maxInputTokens</code> rather than raising it.</p></div>
+    <div class="card"><h4 style="margin-top:0">No fallback configured</h4>
+      <p style="margin:0">One content-filter hit or one 503 and that party emits a placeholder in front of
+      the audience. Always set <code>fallbackModel</code> for a live demo.</p></div>
+    <div class="card"><h4 style="margin-top:0">Raw API keys in provider records</h4>
+      <p style="margin:0">Provider registrations can carry a literal key, and provider state is snapshotted
+      to disk. Use the environment-variable form so the secret never lands in an evidence bundle.</p></div>
+    <div class="card"><h4 style="margin-top:0">Round timeout shorter than the model</h4>
+      <p style="margin:0">A 30&nbsp;s timeout against a model whose p95 is 40&nbsp;s manufactures
+      placeholder moves that look like model failure. Measure first, then set the timeout.</p></div>
+  </div>
+</section>
+
+<!-- ══════════════════ TACTICS & GOALS ══════════════════ -->
+<section class="tab" id="tab-tactics">
+  <h2>Tactics, goals, and getting a better negotiated outcome</h2>
+  <p class="lede">
+    Outcome quality is mostly decided before the first round, in how goals and red lines are written.
+    This tab covers the two halves: what the system can <em>detect</em>, and how to <em>author</em>
+    delegations so that detection has something interesting to find.
+  </p>
+
+  <h3>The rule-based tactic detectors</h3>
+  <p class="hint" style="margin-top:0">
+    Detection is deterministic and explainable &mdash; every detection carries a confidence and is marked
+    as rule-sourced. That is a feature for teaching: students can read the rule and argue about whether it
+    is right.
+  </p>
+  <div class="tbl-wrap" style="max-height:none">
+    <table id="tacticTable">
+      <thead><tr><th style="width:18%">Tactic</th><th style="width:34%">How it is detected</th>
+        <th style="width:9%">Conf.</th><th style="width:39%">What it tells the class</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  <div class="note warn">
+    <b>False positives are real and were measured.</b> The counter-anchoring rule originally fired on
+    roughly two of every five detections incorrectly, because any numeric mention after an earlier number
+    looked like a counter-anchor. It was retightened to require a substantial run of prior anchors
+    <em>and</em> meaningful lexical overlap with the anchor being countered. Treat the ledger as evidence
+    to be interrogated, not as ground truth &mdash; and say so out loud during a demo.
+  </div>
+
+  <h3>Writing goals that produce a real negotiation</h3>
+  <div class="grid2">
+    <div class="card">
+      <h4 style="margin-top:0">Structure of a delegation's objective set</h4>
+      <ul>
+        <li><b>Goals</b> &mdash; ranked, each with a priority and an explicit note about what it can be
+            traded against.</li>
+        <li><b>Red lines</b> &mdash; small in number, absolute, and stated in terms the other side could
+            actually violate.</li>
+        <li><b>BATNA</b> &mdash; a described alternative with an estimated value. This is what makes
+            walking away a live option rather than a bluff.</li>
+        <li><b>Tactics</b> &mdash; the named plays this delegation is authorised to run, each with a
+            trigger condition.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4 style="margin-top:0">The three rules that decide whether it works</h4>
+      <ol>
+        <li><b>Goals must be tradeable across parties, not within one.</b> If A's third priority is
+            cheap for B to concede and vice versa, you have a deal space. If both sides rank the same
+            single issue first and nothing else exists, you have a stalemate generator.</li>
+        <li><b>Red lines must not overlap the ZOPA.</b> If A's red line sits inside the only zone where
+            B can agree, no settlement is reachable &mdash; which is a legitimate teaching scenario, but
+            only if you did it on purpose.</li>
+        <li><b>BATNA value must be below the midpoint of the ZOPA</b> for a party you want to settle,
+            and above it for a party you want to walk. This single number is the most powerful outcome
+            dial in the whole system.</li>
+      </ol>
+    </div>
+  </div>
+
+  <h3>Levers on the negotiated outcome, ranked by effect size</h3>
+  <div class="tbl-wrap" style="max-height:none">
+    <table id="leverTable">
+      <thead><tr><th style="width:8%">Rank</th><th style="width:24%">Lever</th><th style="width:34%">How to move it</th>
+        <th style="width:34%">Observed effect</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="note good">
+    <b>Design the deal space before you write a word of persona.</b> Decide the zone of possible agreement
+    numerically, place each party's reservation value and BATNA relative to it, and only then write the
+    prose. Scenarios authored prose-first almost always turn out to have no ZOPA or a trivially wide one.
+    Full method: <code>docs/diplomacy/SCENARIO-RESEARCH.md</code>.
+  </div>
+</section>
+
+<!-- ══════════════════ SCENARIO ══════════════════ -->
+<section class="tab" id="tab-scenario">
+  <h2>Researching and building a negotiation scenario</h2>
+  <p class="lede">
+    A scenario is a researched artefact, not a writing exercise. The credibility of the whole simulation
+    rests on it: participants will accept a machine-generated argument if the underlying facts are
+    sourced, and reject the entire exercise if one date or one number is wrong. This tab is the working
+    checklist; the long-form method lives in <code>docs/diplomacy/SCENARIO-RESEARCH.md</code>.
+  </p>
+
+  <h3>The seven phases</h3>
+  <div class="grid2" id="phases"></div>
+
+  <h3>Source discipline</h3>
+  <div class="tbl-wrap" style="max-height:none">
+    <table>
+      <thead><tr><th style="width:10%">Tier</th><th style="width:32%">What counts</th><th style="width:20%">Use it for</th><th style="width:38%">Rule</th></tr></thead>
+      <tbody>
+        <tr><td><b>Tier 1</b></td>
+          <td>Treaty text, UN Security Council resolutions, official communiqués, court filings,
+              regulatory notices, published statistics, verbatim transcripts.</td>
+          <td>Anything asserted as fact in <code>context</code>, <code>history</code> or
+              <code>pastAgreements</code>.</td>
+          <td>Cite title, publisher and date. Required for every hard number and every date.</td></tr>
+        <tr><td><b>Tier 2</b></td>
+          <td>Wire-service and major-outlet reporting, think-tank analysis with a named author,
+              specialist trade press.</td>
+          <td><code>recentEvents</code>, characterisation of positions, atmospherics.</td>
+          <td>Two independent Tier-2 sources, or one Tier-2 corroborating a Tier-1, before an item is
+              stated as fact rather than as a claim.</td></tr>
+        <tr><td><b>Tier 3</b></td>
+          <td>Commentary, op-eds, unattributed briefings, model output, your own inference.</td>
+          <td>Only inside a party's private <code>guidance</code> &mdash; i.e. what that delegation
+              <em>believes</em>.</td>
+          <td>Never appears in shared context. Must be labelled as assessment, not fact.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="note">
+    <b>Fiction is allowed; unmarked fiction is not.</b> A synthetic scenario is often better for teaching
+    than a live one &mdash; nobody arrives with a fixed position. But say so in the scenario description,
+    give the fictional entities obviously fictional names, and keep the <em>structure</em> (interests,
+    ZOPA, BATNAs) faithful to a real case. A hybrid &mdash; real structure, invented names &mdash; is the
+    sweet spot for a graded exercise.
+  </div>
+
+  <h3>Design the deal space first</h3>
+  <div class="card">
+    <div class="grid2">
+      <div>
+        <h4 style="margin-top:0">Numbers to fix before writing prose</h4>
+        <ol>
+          <li>The <b>issue</b> being negotiated, expressed on a single scale where possible.</li>
+          <li>Each party's <b>reservation value</b> &mdash; the worst it will accept.</li>
+          <li>The resulting <b>ZOPA</b>, if any: the overlap between reservation values.</li>
+          <li>Each party's <b>BATNA value</b> on the same scale.</li>
+          <li>The <b>secondary issues</b> that make log-rolling possible &mdash; at least two, ranked
+              oppositely by the two sides.</li>
+        </ol>
+      </div>
+      <div>
+        <h4 style="margin-top:0">Sanity tests</h4>
+        <ul>
+          <li>ZOPA width between roughly 5&nbsp;% and 25&nbsp;% of the issue range. Wider is trivial,
+              narrower is a coin flip.</li>
+          <li>No party's red line falls inside the ZOPA unless deadlock is the lesson.</li>
+          <li>At least one party's BATNA is close enough to its reservation value that walking away is
+              credible.</li>
+          <li>Every party has something the other side wants and can concede without crossing a red line.</li>
+          <li>If you remove any one party, the deal becomes materially easier &mdash; otherwise that party
+              is decoration.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <h3>Scenario field reference</h3>
+  <div class="tbl-wrap" style="max-height:none">
+    <table id="scenarioFields">
+      <thead><tr><th style="width:20%">Field</th><th style="width:12%">Required</th><th style="width:34%">Purpose</th><th style="width:34%">Authoring guidance</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <h3>Live scenarios on the connected backend</h3>
+  <div class="card online-only">
+    <div class="row" style="margin-bottom:8px">
+      <button id="btnScenRefresh">Fetch scenarios</button>
+      <span class="hint" id="scenCount"></span>
+    </div>
+    <div id="scenList" class="hint">Not loaded.</div>
+  </div>
+  <div class="note offline-only">Connect a backend to inspect the scenarios it has loaded.</div>
+
+  <h3>Quality gate &mdash; do not run a graded exercise until every box is ticked</h3>
+  <div class="card">
+    <div id="qaGate"></div>
+    <div class="row" style="margin-top:10px">
+      <span class="hint" id="qaScore"></span>
+      <button class="sm" id="btnQaReset">Reset</button>
+      <button class="sm" id="btnQaPrint">Print checklist</button>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════ DELEGATIONS ══════════════════ -->
+<section class="tab" id="tab-delegations">
+  <h2>Authoring a delegation</h2>
+  <p class="lede">
+    A delegation twin is a persona plus an objective set plus a model configuration. The objective set is
+    what makes it negotiate; the persona is what makes it recognisable; the model configuration is what
+    makes it reliable. Build all three deliberately, then export the fixture below.
+  </p>
+
+  <h3>Builder</h3>
+  <div class="card">
+    <div class="grid2">
+      <div>
+        <div class="field"><label for="dName">Twin name</label>
+          <input id="dName" placeholder="diplomacy-team-atlantica" />
+          <span class="hint">Must start with <code>diplomacy-team-</code>; becomes the pack directory name.</span></div>
+        <div class="field"><label for="dDisplay">Display name</label>
+          <input id="dDisplay" placeholder="Republic of Atlantica" /></div>
+        <div class="field"><label for="dRole">Role at the table</label>
+          <input id="dRole" placeholder="Coastal state, host of the disputed terminal" /></div>
+        <div class="field"><label for="dStyle">Negotiating style</label>
+          <select id="dStyle">
+            <option value="competing">competing &mdash; high assertiveness, low cooperation</option>
+            <option value="collaborating">collaborating &mdash; high assertiveness, high cooperation</option>
+            <option value="compromising" selected>compromising &mdash; moderate on both</option>
+            <option value="accommodating">accommodating &mdash; low assertiveness, high cooperation</option>
+            <option value="avoiding">avoiding &mdash; low on both</option>
+          </select>
+          <span class="hint">Thomas&ndash;Kilmann frame. Mixing styles across the table is what makes a
+          session interesting; five compromisers produce a dull, fast, uninstructive deal.</span></div>
+        <div class="field"><label for="dTemp">Temperament note</label>
+          <input id="dTemp" placeholder="Formal, legalistic, slow to concede but honours what it signs" /></div>
+      </div>
+      <div>
+        <div class="field"><label for="dGoals">Goals &mdash; one per line, <code>priority | goal | tradeable against</code></label>
+          <textarea id="dGoals" rows="5" placeholder="1 | Retain sovereign control of the terminal | nothing
+2 | Secure 15-year throughput guarantee | tariff schedule
+3 | Avoid binding arbitration | inspection regime"></textarea></div>
+        <div class="field"><label for="dRed">Red lines &mdash; one per line</label>
+          <textarea id="dRed" rows="3" placeholder="No foreign military presence at the terminal
+No transfer of title to any third party"></textarea></div>
+        <div class="field"><label for="dBatna">BATNA</label>
+          <input id="dBatna" placeholder="Operate the terminal alone at reduced volume" /></div>
+        <div class="field"><label for="dBatnaVal">BATNA estimated value (0&ndash;100)</label>
+          <input id="dBatnaVal" type="number" min="0" max="100" value="35" />
+          <span class="hint">On the same scale as the issue. Below the ZOPA midpoint &rarr; this party
+          settles. Above it &rarr; this party is willing to walk.</span></div>
+        <div class="field"><label for="dTactics">Authorised tactics &mdash; one per line, <code>id | trigger</code></label>
+          <textarea id="dTactics" rows="4" placeholder="anchoring | opening round
+deadline-pressure | after round 6 with no movement
+principled-appeal | when sovereignty is questioned"></textarea></div>
+      </div>
+    </div>
+    <div class="row">
+      <button class="primary" id="btnBuildDelegation">Generate fixture + system prompt</button>
+      <button id="btnCopyDelegation">Copy JSON</button>
+      <button id="btnLoadExample">Load worked example</button>
+    </div>
+    <h4>Generated delegation fixture</h4>
+    <pre id="delegationOut" style="max-height:340px">Fill the form and press Generate.</pre>
+    <h4>Generated system-prompt override</h4>
+    <pre id="promptOut" style="max-height:300px">&mdash;</pre>
+  </div>
+
+  <h3>The seven-part system prompt</h3>
+  <div class="card">
+    <p style="margin-top:0">The delegation twin assembles its system prompt from the fixture in a fixed
+    order. Understanding the order tells you where to intervene when a party misbehaves.</p>
+    <ol class="steps">
+      <li><b>Identity and persona.</b> Who you are, your style, your temperament.</li>
+      <li><b>Goals in priority order,</b> with tradeability annotations.</li>
+      <li><b>Red lines,</b> stated as absolutes.</li>
+      <li><b>BATNA,</b> with its estimated value &mdash; this is what licenses walking away.</li>
+      <li><b>Authorised tactic ids,</b> with triggers. Anything the model claims to have used that is not
+          in this list is silently discarded from the record.</li>
+      <li><b>Output contract.</b> Strict JSON shape; a short move; no meta-commentary.</li>
+      <li><b>Identity lock and anti-repetition.</b> Explicit instructions not to speak for other parties
+          and not to restate its own previous move.</li>
+    </ol>
+    <div class="note">
+      Keep an override under roughly 450 words. Past that, on a small model, the transcript and the
+      instructions start competing for attention and persona drift sets in around round 4.
+    </div>
+  </div>
+
+  <h3>Installing a new delegation</h3>
+  <div class="card">
+    <ol class="steps">
+      <li>Copy an existing <code>diplomacy-team-*</code> pack directory to the new twin name.</li>
+      <li>Update the manifest name and description; update the pack's exported identity.</li>
+      <li>Replace the fixture with the JSON generated above.</li>
+      <li>
+        Reload the twin &mdash; <code>POST /_twins/&lt;name&gt;/reload</code> re-evaluates the pack's whole
+        module graph in place and preserves state (RUNTIME-HOTLOAD-002). A brand-new pack directory still
+        needs a restart, because packs are <em>discovered</em> at boot.
+      </li>
+      <li>Smoke-test with a two-party session before adding it to a real convening.</li>
+    </ol>
+    <div class="note warn">
+      <b>Route-prefix trap.</b> Handler route patterns and OpenAPI paths inside a pack must be written
+      <em>without</em> the twin-name prefix &mdash; <code>/turn</code>, not
+      <code>/diplomacy-team-x/turn</code>. The runtime strips the twin name before dispatch. Getting this
+      wrong yields a twin that answers direct curl calls but 404s under the test harness.
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════ ZOPA ══════════════════ -->
+<section class="tab" id="tab-zopa">
+  <h2>ZOPA &mdash; the zone of possible agreement</h2>
+  <p class="lede">
+    A ZOPA is not a feeling about whether two sides are "close". It is arithmetic: the overlap of the
+    intervals each side would still sign. This tab computes what the authored data actually supports,
+    and is explicit about what it does not &mdash; because on a teaching tool, a confident wrong
+    overlap bar is worse than an absent one.
+  </p>
+
+  <div class="card">
+    <div class="row">
+      <div class="field" style="flex:1;min-width:260px">
+        <label for="zopaScenario">Scenario</label>
+        <select id="zopaScenario"><option value="">— load scenarios —</option></select>
+      </div>
+      <div class="field">
+        <label for="zopaOrigin">Data source</label>
+        <select id="zopaOrigin">
+          <option value="fixture">Authored (fixture)</option>
+          <option value="live">Runtime (live twin state)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>&nbsp;</label>
+        <button id="zopaRun">Analyse</button>
+      </div>
+    </div>
+    <div class="note">
+      <b>Why "authored" is the default.</b> Live twin state is mutable, and anything that writes to a
+      delegation &mdash; notably an efficacy run, which overwrites <code>/batna</code> with test data
+      &mdash; silently replaces the scenario design. Switch to <em>Runtime</em> to see what the twins
+      currently hold; any divergence is reported as drift below.
+    </div>
+    <div id="zopaLog" class="log" style="margin-top:10px">Pick a scenario and press Analyse.</div>
+  </div>
+
+  <div id="zopaResults" style="display:none">
+
+    <!-- ---------- Phase A: BATNA asymmetry ---------- -->
+    <div class="card">
+      <h3>Leverage &amp; BATNA asymmetry</h3>
+      <p class="lede" style="margin-top:-4px">
+        This is <b>not</b> a ZOPA. It is the one quantity the current schema fully supports, and it is
+        the single best predictor of who concedes first.
+      </p>
+      <div id="zopaBatnaBars"></div>
+      <div id="zopaBatnaExplain" class="note" style="margin-top:10px"></div>
+      <div id="zopaDebriefNote" class="note" style="margin-top:8px">
+      </div>
+    </div>
+
+    <!-- ---------- The missing links ---------- -->
+    <div class="card">
+      <h3>Can we compute a ZOPA? <span id="zopaScore" class="tag"></span></h3>
+      <p class="lede" style="margin-top:-4px">
+        The formal test on one issue, with both sides on a shared scale:
+        <code>ZOPA = [reservation_A, reservation_B]</code> is non-empty
+        <b>iff</b> <code>reservation_A &le; reservation_B</code>. Every symbol there is an input
+        somebody has to author. Five are required.
+      </p>
+      <div id="zopaSummary" class="note"></div>
+      <div id="zopaLinks" style="margin-top:12px"></div>
+    </div>
+
+    <!-- ---------- Inferred pairings ---------- -->
+    <div class="card" id="zopaPairCard">
+      <h3>Issue pairings the model does not record</h3>
+      <p class="lede" style="margin-top:-4px">
+        These goals look like two sides of one issue to a human reader. Nothing in the data links them
+        &mdash; which is exactly the inference a naive calculator would make silently. Confirm or reject
+        each one when authoring the shared issue axis (L1).
+      </p>
+      <div id="zopaPairings"></div>
+    </div>
+
+    <!-- ---------- Drift ---------- -->
+    <div class="card" id="zopaDriftCard" style="display:none">
+      <h3>Drift &mdash; authored design vs. runtime state</h3>
+      <div id="zopaDrift"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>How to close the gap</h3>
+    <p>
+      The reservation value (L4) is the load-bearing one, and it is <em>research</em>, not code. Elicit
+      it with the flip question, per delegation, per issue:
+    </p>
+    <div class="note">
+      <em>"If the final text said exactly <b>X</b> on this issue and nothing else changed, would you
+      sign it, or take the BATNA? Now move X until the answer flips."</em> That crossing point is the
+      reservation.
+    </div>
+    <p style="margin-top:10px">Then cross-check it twice &mdash; both checks are teachable in their own right:</p>
+    <ol class="steps">
+      <li>
+        <b>Against the BATNA.</b> A reservation is only credible if walking away is genuinely worse. If
+        the side with the <em>worse</em> BATNA also holds the <em>tighter</em> reservations, the scenario
+        is internally inconsistent.
+      </li>
+      <li>
+        <b>Against the red lines.</b> A red line <em>is</em> a reservation stated in prose. If a red line
+        says "no enrichment above 5%" and the goal's <code>min</code> implies 20%, one of the two is an
+        authoring bug. Cheap check; catches real errors.
+      </li>
+    </ol>
+    <div class="note warn" style="margin-top:10px">
+      <b>Three tempting shortcuts, all worse than shipping nothing.</b>
+      <b>(1) Infer reservations with an LLM</b> &mdash; plausible numbers, no provenance, on an
+      authoritative-looking chart. If ever done, it must be labelled <em>inferred</em>, never
+      <em>authored</em>.
+      <b>(2) Use <code>priority</code> as a proxy</b> &mdash; they are orthogonal: an issue can be
+      critical <em>and</em> have a wide acceptable range.
+      <b>(3) Ship the <code>{min:0, target:1}</code> placeholders</b> &mdash; every issue overlaps
+      completely, every scenario reports a maximal ZOPA, and students learn the exact inverse of the
+      lesson.
+    </div>
+    <p style="margin-top:10px" class="hint">
+      Full rationale: <code>docs/diplomacy/DESIGN-ZOPA-CALCULATOR.md</code> &sect;1.3. Authoring method:
+      <code>docs/diplomacy/SCENARIO-RESEARCH.md</code> Phase 3 step 6.
+    </p>
+  </div>
+</section>
+
+<!-- ══════════════════ BAKE-OFF ══════════════════ -->
+<section class="tab" id="tab-bakeoff">
+  <h2>Model bake-off &mdash; find out what actually works</h2>
+  <p class="lede">
+    The teaching claim of this whole console is that model choice is a decision with measurable
+    consequences. This tab makes that testable: build a session payload, run the same scenario under
+    different model assignments, and record the metrics that matter. Everything here is honest about
+    what it measures &mdash; small samples, noisy metrics, real conclusions only after several runs.
+  </p>
+
+  <h3>Session payload builder</h3>
+  <div class="card">
+    <div class="grid2">
+      <div>
+        <div class="field"><label for="sTitle">Session title</label>
+          <input id="sTitle" value="Model bake-off — run 1" /></div>
+        <div class="field"><label for="sDesc">Description</label>
+          <input id="sDesc" value="Same scenario, varied delegation models." /></div>
+        <div class="field"><label for="sMode">Mode</label>
+          <select id="sMode">
+            <option value="negotiation" selected>negotiation</option>
+            <option value="debate">debate</option>
+            <option value="mediation">mediation</option>
+          </select></div>
+        <div class="field"><label for="sRounds">Max rounds</label>
+          <input id="sRounds" type="number" min="1" max="40" value="8" /></div>
+        <div class="field"><label for="sTimeout">Round timeout (ms)</label>
+          <input id="sTimeout" type="number" min="5000" step="5000" value="45000" /></div>
+      </div>
+      <div>
+        <div class="field"><label for="sProcedure">Procedure style</label>
+          <select id="sProcedure">
+            <option value="open-table" selected>open-table</option>
+            <option value="plenary-with-caucus">plenary-with-caucus</option>
+            <option value="shuttle">shuttle</option>
+            <option value="proximity-talks">proximity-talks</option>
+          </select></div>
+        <div class="field"><label for="sOpener">Opening party (twin name, optional)</label>
+          <input id="sOpener" placeholder="diplomacy-team-us" /></div>
+        <div class="row" style="margin-bottom:10px">
+          <label class="hint" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="sRotate" style="width:auto" /> rotate opener</label>
+          <label class="hint" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="sSidebars" style="width:auto" /> sidebars allowed</label>
+          <label class="hint" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="sReportBack" style="width:auto" /> caucus report-back</label>
+        </div>
+        <div class="row" style="margin-bottom:10px">
+          <label class="hint" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="sReply" style="width:auto" /> right of reply</label>
+          <label class="hint" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="sSilence" style="width:auto" /> chair can silence</label>
+          <label class="hint" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="sCoalitions" style="width:auto" /> coalitions visible</label>
+        </div>
+        <div class="field"><label for="sScenario">Scenario id (optional)</label>
+          <input id="sScenario" placeholder="scenario-…" list="scenDatalist" />
+          <datalist id="scenDatalist"></datalist></div>
+      </div>
+    </div>
+
+    <h4>Parties</h4>
+    <div class="tbl-wrap" style="max-height:none">
+      <table id="partyTable">
+        <thead><tr><th>Twin name</th><th>Display</th><th>Participant</th><th>Provider</th><th>Model</th><th>Fallback</th><th>Max input tok.</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <button id="btnAddParty">Add party</button>
+      <button id="btnBuildSession">Build payload</button>
+      <button id="btnCopySession">Copy JSON</button>
+      <button class="primary online-only" id="btnCreateSession">Create on backend</button>
+    </div>
+    <h4>POST /diplomacy-table/sessions</h4>
+    <pre id="sessionOut" style="max-height:320px">Press <b>Build payload</b>.</pre>
+  </div>
+
+  <h3>Run and measure</h3>
+  <div class="card online-only">
+    <div class="row" style="margin-bottom:8px">
+      <input id="runSessionId" placeholder="session id" style="min-width:260px" />
+      <button id="btnStartSession">Start</button>
+      <button id="btnRound">Advance one round</button>
+      <button id="btnRunToEnd">Run to cap</button>
+      <button id="btnConclude">Conclude</button>
+      <button id="btnMeasure">Measure</button>
+      <button class="danger sm" id="btnStopRun">Stop</button>
+    </div>
+    <div class="log" id="runLog">Idle.</div>
+    <h4>Results</h4>
+    <div class="tbl-wrap" style="max-height:300px">
+      <table id="resultsTable">
+        <thead><tr><th>Session</th><th>Rounds</th><th>Moves</th><th>Tactics</th><th>Placeholders</th>
+          <th>Satisfaction spread</th><th>Red lines crossed</th><th>Wall time</th><th>Models</th></tr></thead>
+        <tbody><tr><td colspan="9" class="hint">No runs recorded.</td></tr></tbody>
+      </table>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <button class="sm" id="btnExportResults">Export results CSV</button>
+      <button class="sm danger" id="btnClearResults">Clear</button>
+    </div>
+  </div>
+  <div class="note offline-only">Connect a backend to run a bake-off. The payload builder above works offline.</div>
+
+  <h3>What to measure, and what each metric is worth</h3>
+  <div class="tbl-wrap" style="max-height:none">
+    <table id="metricTable">
+      <thead><tr><th style="width:20%">Metric</th><th style="width:30%">Definition</th><th style="width:25%">Good looks like</th><th style="width:25%">Caveat</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="note warn">
+    <b>Methodological honesty.</b> One session is an anecdote. Model comparison needs at least five runs
+    per configuration with the same scenario, and even then satisfaction scores are self-reported by the
+    delegations themselves and should be read as a signal about persona coherence rather than as a
+    measure of negotiation skill. State this to students explicitly &mdash; the exercise of critiquing the
+    metric is worth more than the metric.
+  </div>
+</section>
+
+<!-- ══════════════════ RUNBOOK ══════════════════ -->
+<section class="tab" id="tab-runbook">
+  <h2>Run-time evaluation &mdash; Diplomacy Simulation Demo, Army War College</h2>
+  <p class="lede">
+    A ninety-minute block for a professional military-education audience: senior officers and civilian
+    equivalents who will be sceptical, subject-matter expert on the scenario, and unforgiving of anything
+    that looks like a magic trick. The goal is not to impress them with the AI. It is to show them a
+    <em>method</em> for structured wargaming of a negotiation, with the machine's limits stated up front.
+  </p>
+
+  <h3>Preflight &mdash; T&minus;24 hours</h3>
+  <div class="card">
+    <div id="preflight"></div>
+    <div class="row" style="margin-top:10px">
+      <button class="primary online-only" id="btnRunPreflight">Run automated checks</button>
+      <span class="hint" id="preflightScore"></span>
+      <button class="sm" id="btnPreflightReset">Reset</button>
+    </div>
+    <div class="log" id="preflightLog" style="margin-top:10px">Automated checks not run.</div>
+  </div>
+
+  <h3>Run sheet</h3>
+  <div class="tbl-wrap" style="max-height:none">
+    <table id="runsheet">
+      <thead><tr><th style="width:10%">Clock</th><th style="width:22%">Segment</th><th style="width:38%">What happens</th><th style="width:30%">Operator actions &amp; risk</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <h3>Failure modes and what to say</h3>
+  <div class="tbl-wrap" style="max-height:none">
+    <table id="failTable">
+      <thead><tr><th style="width:22%">If this happens</th><th style="width:18%">Likelihood</th><th style="width:30%">Do this</th><th style="width:30%">Say this</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <h3>Evaluation instrument</h3>
+  <div class="card">
+    <p style="margin-top:0">Collect these from participants at the end. They are deliberately about the
+    <em>method</em>, not about whether the AI was impressive.</p>
+    <ol>
+      <li>Name one move a delegation made that you judged militarily or diplomatically implausible, and
+          say why.</li>
+      <li>Name one move you judged plausible <em>and</em> non-obvious.</li>
+      <li>Did the tactic ledger identify anything you would not have noticed unaided? Did it miss
+          anything obvious?</li>
+      <li>Where did the deal land relative to where you expected it to land? What in the configuration
+          explains the difference?</li>
+      <li>Which single configuration change would most improve the fidelity of this exercise?</li>
+      <li>What is one question this tool could help a staff group answer that they cannot answer today
+          in a comparable amount of time?</li>
+    </ol>
+    <div class="note">
+      Question 1 is the most important one. If nobody can name an implausible move, the scenario was too
+      shallow to be worth playing. Harvesting those answers is how the scenario library improves.
+    </div>
+  </div>
+
+  <h3>Framing language &mdash; use it verbatim</h3>
+  <div class="card">
+    <div class="note good" style="margin-top:0">
+      "What you are about to see is not a prediction. It is a structured way to explore how a negotiation
+      might unfold given a specific set of assumptions about what each party wants, what it will not
+      give up, and what it does if the talks fail. The value is in seeing those assumptions written
+      down, played out, and then challenged &mdash; not in the machine's opinion about the outcome."
+    </div>
+    <div class="note good">
+      "Every delegation is running against instructions that are visible to you and to nobody else at the
+      table. If a delegation says something you think is wrong, that is a finding about the instructions
+      we wrote, and we can change them and re-run in about eight minutes."
+    </div>
+    <div class="note good">
+      "The tactic ledger is rule-based, not a judgement call by a model. That means it is explainable and
+      it means it is sometimes wrong in ways you can see and argue with. Both of those are deliberate."
+    </div>
+    <div class="note bad">
+      Do not say: "the AI decided", "the model predicts", "this is what would happen", or anything that
+      implies the system has access to intelligence, capabilities data, or planning assumptions it does
+      not have. Do not run a scenario against a currently classified or operationally sensitive problem
+      set on a network or a hosted model that is not accredited for it.
+    </div>
+  </div>
+
+  <h3>Deployment posture for the demo</h3>
+  <div class="card">
+    <dl class="kv">
+      <dt>Recommended</dt><dd>Backend on the local box in the room, models local, no external network
+        dependency. Frontend served from the same box. Zero cloud, zero latency surprise, zero
+        content-filter risk.</dd>
+      <dt>Acceptable</dt><dd>Backend on the B3IQ hardware reached over a tunnel; frontend on Pages.
+        Requires a tested network path and a rehearsed fallback to the local box.</dd>
+      <dt>Fallback</dt><dd>A pre-recorded transcript bundle replayed by the static frontend. Prepare this
+        regardless &mdash; it costs an hour and it is the difference between a bad day and a cancelled
+        session.</dd>
+      <dt>Not acceptable</dt><dd>Live hosted-API models over conference Wi-Fi with no local fallback,
+        for a scenario likely to trip a content filter.</dd>
+    </dl>
+  </div>
+</section>
+</main>
+
+<footer>
+  Diplomacy Table config console &middot; part of the Digital Twin Systems Framework (DTSF).
+  Companion documents: <code>docs/diplomacy/DESIGN.md</code> and <code>docs/diplomacy/SCENARIO-RESEARCH.md</code>.
+  This page is dependency-free and works offline from <code>file://</code> or GitHub Pages.
+</footer>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════
+   Diplomacy Table — Configuration & Teaching Console
+   Vanilla JS. No dependencies. Works from file://, from GitHub Pages,
+   and served by the DTSF runtime at /diplomacy-table/config.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ---------- tiny DOM helpers ---------- */
+var $  = function (id) { return document.getElementById(id); };
+var qs = function (s, r) { return (r || document).querySelector(s); };
+var qa = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
+function esc(s) {
+  return String(s === null || s === undefined ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+function el(tag, cls, html) {
+  var n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (html !== undefined) n.innerHTML = html;
+  return n;
+}
+function rows(tableId, data, cells) {
+  var tb = qs('#' + tableId + ' tbody');
+  if (!tb) return;
+  tb.innerHTML = data.map(function (d, i) {
+    return '<tr>' + cells(d, i).map(function (c) { return '<td>' + c + '</td>'; }).join('') + '</tr>';
+  }).join('');
+}
+function copyText(text, btn) {
+  var done = function () {
+    if (!btn) return;
+    var old = btn.textContent; btn.textContent = 'Copied';
+    setTimeout(function () { btn.textContent = old; }, 1200);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(done, function () { fallback(); });
+  } else { fallback(); }
+  function fallback() {
+    var ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); done(); } catch (e) { /* noop */ }
+    document.body.removeChild(ta);
+  }
+}
+
+/* ---------- connection state ---------- */
+var LS_BASE = 'dtsf.apiBase', LS_TOK = 'dtsf.token';
+var State = { base: '', token: '', online: false, health: null, providers: [], models: [], scenarios: [] };
+
+function lsGet(k) { try { return window.localStorage.getItem(k) || ''; } catch (e) { return ''; } }
+function lsSet(k, v) { try { window.localStorage.setItem(k, v); } catch (e) { /* noop */ } }
+function lsDel(k) { try { window.localStorage.removeItem(k); } catch (e) { /* noop */ } }
+
+function resolveBase() {
+  var p = new URLSearchParams(window.location.search);
+  var fromQuery = p.get('api');
+  if (fromQuery) return fromQuery.replace(/\/+$/, '');
+  var stored = lsGet(LS_BASE);
+  if (stored) return stored.replace(/\/+$/, '');
+  // Checked with `in`, not truthiness, so a static host can publish
+  //   <script>window.DTSF_API_BASE_DEFAULT = '';<\/script>
+  // to mean "there is deliberately no backend here". Falling through to
+  // location.origin on GitHub Pages would point the console at github.io and
+  // surface connection errors, when the correct state is reference-only.
+  //
+  // The `<\/` above is escaped deliberately: inside a <script> element the HTML
+  // tokenizer ends the script at the first literal end-script tag — even inside
+  // a JavaScript comment like this one — which silently truncates every line
+  // below. Always write it as <\/script>.
+  if ('DTSF_API_BASE_DEFAULT' in window) {
+    return String(window.DTSF_API_BASE_DEFAULT || '').replace(/\/+$/, '');
+  }
+  if (window.location.protocol === 'file:') return '';
+  return window.location.origin;
+}
+function resolveToken() {
+  var p = new URLSearchParams(window.location.search);
+  return p.get('token') || lsGet(LS_TOK) || '';
+}
+
+function setOnline(ok, label) {
+  State.online = !!ok;
+  document.body.classList.toggle('offline', !ok);
+  var dot = $('connDot'), txt = $('connText'), pill = $('connPill');
+  if (dot) dot.className = 'dot ' + (ok ? 'ok' : 'bad');
+  if (txt) txt.textContent = label || (ok ? 'connected' : 'not connected');
+  if (pill) pill.title = State.base || 'no API base configured';
+}
+
+function log(target, msg, kind) {
+  var box = $(target);
+  if (!box) return;
+  if (box.dataset.fresh !== '1') { box.textContent = ''; box.dataset.fresh = '1'; }
+  var t = new Date().toISOString().slice(11, 19);
+  var line = el('div', kind ? 'line ' + kind : 'line', '<span class="ts">' + t + '</span> ' + esc(msg));
+  box.appendChild(line);
+  box.scrollTop = box.scrollHeight;
+}
+
+/* ---------- fetch helper ---------- */
+function req(path, opts) {
+  opts = opts || {};
+  if (typeof fetch !== 'function') return Promise.reject(new Error('This browser has no fetch(); live actions are unavailable.'));
+  if (!State.base) return Promise.reject(new Error('No API base configured.'));
+  var url = State.base.replace(/\/+$/, '') + path;
+  var headers = { 'Accept': 'application/json' };
+  if (opts.body !== undefined) headers['Content-Type'] = 'application/json';
+  if (State.token) headers['Authorization'] = 'Bearer ' + State.token;
+  if (opts.headers) Object.keys(opts.headers).forEach(function (k) { headers[k] = opts.headers[k]; });
+  var ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  var timer = ctl ? setTimeout(function () { ctl.abort(); }, opts.timeout || 30000) : null;
+  return fetch(url, {
+    method: opts.method || 'GET',
+    headers: headers,
+    body: opts.body === undefined ? undefined : JSON.stringify(opts.body),
+    signal: ctl ? ctl.signal : undefined
+  }).then(function (r) {
+    if (timer) clearTimeout(timer);
+    var ct = r.headers.get('content-type') || '';
+    var p = ct.indexOf('json') >= 0 ? r.json() : r.text();
+    return p.then(function (body) {
+      if (!r.ok) {
+        var m = (body && body.error && body.error.message) || (typeof body === 'string' ? body.slice(0, 200) : r.statusText);
+        var err = new Error('HTTP ' + r.status + ' — ' + m);
+        err.status = r.status; err.body = body;
+        throw err;
+      }
+      return body;
+    });
+  }, function (e) {
+    if (timer) clearTimeout(timer);
+    throw new Error(e && e.name === 'AbortError' ? 'request timed out' : (e && e.message) || 'network error');
+  });
+}
+
+/* ---------- ZOPA tab (DIPL-ZOPA-001) ---------- */
+var ZOPA_STATUS_COLOR = { present: '#3fb950', partial: '#d29922', missing: '#f85149' };
+
+function zopaPopulateScenarios() {
+  var sel = $('zopaScenario');
+  if (!sel) return;
+  var list = State.scenarios || [];
+  if (!list.length) { sel.innerHTML = '<option value="">— no scenarios loaded —</option>'; return; }
+  sel.innerHTML = list.map(function (s) {
+    return '<option value="' + esc(s.id) + '">' + esc(s.title || s.id) + '</option>';
+  }).join('');
+}
+
+function zopaFmt(v) {
+  if (typeof v !== 'number') return '—';
+  var a = Math.abs(v), sign = v < 0 ? '-' : '';
+  if (a >= 1e9) return sign + '$' + (a / 1e9).toFixed(a >= 1e10 ? 0 : 1) + 'B';
+  if (a >= 1e6) return sign + '$' + (a / 1e6).toFixed(0) + 'M';
+  return sign + '$' + a.toLocaleString();
+}
+
+function zopaRenderBatna(b) {
+  var box = $('zopaBatnaBars');
+  if (!box) return;
+  if (!b || !b.available) {
+    box.innerHTML = '<div class="hint">' + esc((b && b.reason) || 'Not computed.') + '</div>';
+    $('zopaBatnaExplain').innerHTML = esc((b && b.explanation) || '');
+    $('zopaDebriefNote').innerHTML = '';
+    return;
+  }
+  // Bar width = share of total walk-away pain. Wider bar = more to lose by
+  // walking = weaker position. Labelled explicitly, because the intuition
+  // ("bigger must be better") runs the other way.
+  box.innerHTML = (b.parties || []).map(function (p) {
+    var pct = p.share === null ? 0 : Math.round(p.share * 100);
+    var weakest = p.teamTwinName === b.weakerParty;
+    var color = weakest ? '#f85149' : '#3fb950';
+    return '' +
+      '<div style="margin:10px 0">' +
+        '<div class="row" style="justify-content:space-between;font-size:12.5px">' +
+          '<b>' + esc(p.displayName) + '</b>' +
+          '<span><code>' + esc(zopaFmt(p.estimatedValue)) + '</code> ' +
+          '<span class="tag" style="border-color:' + color + ';color:' + color + '">' +
+          (weakest ? 'needs the deal more' : 'can hold out') + '</span></span>' +
+        '</div>' +
+        '<div style="height:16px;background:var(--panel-2);border-radius:4px;overflow:hidden;margin-top:4px">' +
+          '<div style="height:100%;width:' + pct + '%;background:' + color + ';opacity:.75"></div>' +
+        '</div>' +
+        '<div class="hint">' + pct + '% of the combined cost of walking away</div>' +
+      '</div>';
+  }).join('');
+  var ratio = b.ratio === null ? '—' : (Math.round(b.ratio * 10) / 10) + '\u00d7';
+  $('zopaBatnaExplain').innerHTML = '<b>Asymmetry ' + esc(ratio) + '.</b> ' + esc(b.explanation || '');
+  $('zopaDebriefNote').innerHTML = '<b>Debrief note.</b> ' + esc(b.debriefNote || '');
+}
+
+function zopaRenderLinks(r) {
+  var box = $('zopaLinks');
+  if (!box) return;
+  box.innerHTML = (r.links || []).map(function (l) {
+    var color = ZOPA_STATUS_COLOR[l.status] || 'var(--muted)';
+    return '' +
+      '<div class="card" style="margin:0 0 10px;border-left:3px solid ' + color + '">' +
+        '<div class="row" style="justify-content:space-between">' +
+          '<b>' + esc(l.id) + ' &mdash; ' + esc(l.name) + '</b>' +
+          '<span class="tag" style="border-color:' + color + ';color:' + color + '">' + esc(l.status) + '</span>' +
+        '</div>' +
+        '<div class="hint" style="margin:2px 0 8px"><em>' + esc(l.question) + '</em></div>' +
+        '<dl class="kv">' +
+          '<dt>Found</dt><dd>' + esc(l.finding) + '</dd>' +
+          '<dt>Why it is needed</dt><dd>' + esc(l.whyNeeded) + '</dd>' +
+          '<dt>How to close it</dt><dd>' + esc(l.howToClose) + '</dd>' +
+          (l.trap ? '<dt>Trap</dt><dd style="color:var(--warn)">' + esc(l.trap) + '</dd>' : '') +
+        '</dl>' +
+      '</div>';
+  }).join('');
+
+  var score = $('zopaScore');
+  if (score) {
+    var color = r.computable ? '#3fb950' : '#f85149';
+    score.textContent = r.scoreLabel || '';
+    score.style.borderColor = color;
+    score.style.color = color;
+  }
+  var sum = $('zopaSummary');
+  if (sum) {
+    sum.innerHTML = (r.computable ? '' : '<b>No ZOPA is computed.</b> ') + esc(r.summary || '') +
+      (r.totalGoals
+        ? ' <br><span class="hint">' + r.placeholderGoals.length + ' of ' + r.totalGoals +
+          ' goals still carry the placeholder <code>satisfaction {min:0, target:1}</code>.</span>'
+        : '');
+  }
+}
+
+function zopaRenderPairings(list) {
+  var box = $('zopaPairings'), card = $('zopaPairCard');
+  if (!box) return;
+  if (!list || !list.length) {
+    if (card) card.style.display = 'none';
+    return;
+  }
+  if (card) card.style.display = '';
+  box.innerHTML = list.map(function (p) {
+    return '' +
+      '<div class="chk">' +
+        '<div style="flex:1">' +
+          '<b>' + esc(p.issue) + '</b><br>' +
+          '<code>' + esc(p.a) + '</code> &harr; <code>' + esc(p.b) + '</code>' +
+          (p.note ? '<div class="hint" style="color:#d29922">' + esc(p.note) + '</div>' : '') +
+        '</div>' +
+      '</div>';
+  }).join('');
+}
+
+function zopaRenderDrift(drift) {
+  var card = $('zopaDriftCard'), box = $('zopaDrift');
+  if (!card || !box) return;
+  if (!drift || !drift.length) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  box.innerHTML = '<div class="note warn">' +
+    '<b>Runtime state has diverged from the authored design.</b> The analysis above uses the authored ' +
+    'fixture. The twins currently hold something different:</div>' +
+    '<ul>' + drift.map(function (d) { return '<li>' + esc(d) + '</li>'; }).join('') + '</ul>';
+}
+
+function zopaRun() {
+  var sel = $('zopaScenario');
+  var id = sel && sel.value;
+  if (!State.base) { log('zopaLog', 'Connect to an API base first (Connect tab).', 'bad'); return; }
+  if (!id) { log('zopaLog', 'Pick a scenario first.', 'warn'); return; }
+  var origin = ($('zopaOrigin') && $('zopaOrigin').value) || 'fixture';
+  log('zopaLog', 'GET /diplomacy-table/zopa?scenarioId=' + id + '&source=' + origin);
+  req('/diplomacy-table/zopa?scenarioId=' + encodeURIComponent(id) + '&source=' + origin, { timeout: 20000 })
+    .then(function (r) {
+      $('zopaResults').style.display = '';
+      (r.warnings || []).forEach(function (w) { log('zopaLog', w, 'bad'); });
+      zopaRenderBatna(r.batnaAsymmetry);
+      zopaRenderLinks(r.readiness || {});
+      zopaRenderPairings((r.readiness || {}).inferredPairings);
+      zopaRenderDrift(r.drift);
+      log('zopaLog', 'analysed ' + (r.parties || []).length + ' delegations — ' +
+        ((r.readiness || {}).scoreLabel || '') + (r.zopa ? '' : ' — no ZOPA computed'),
+        r.readiness && r.readiness.computable ? 'ok' : 'warn');
+    })
+    .catch(function (e) { log('zopaLog', 'failed — ' + e.message, 'bad'); });
+}
+
+if ($('zopaRun')) $('zopaRun').addEventListener('click', zopaRun);
+
+/* ---------- tab router ---------- */
+function showTab(name) {
+  qa('nav#tabs button').forEach(function (b) { b.classList.toggle('active', b.dataset.tab === name); });
+  qa('section.tab').forEach(function (s) { s.classList.toggle('active', s.id === 'tab-' + name); });
+  if (window.location.hash.slice(1) !== name) {
+    try { history.replaceState(null, '', '#' + name); } catch (e) { window.location.hash = name; }
+  }
+  window.scrollTo(0, 0);
+}
+qa('nav#tabs button').forEach(function (b) {
+  b.addEventListener('click', function () { showTab(b.dataset.tab); });
+});
+
+/* ---------- connect actions ---------- */
+function applyBase(v, remember) {
+  State.base = String(v || '').replace(/\/+$/, '');
+  State.token = ($('apiToken') && $('apiToken').value.trim()) || State.token;
+  if ($('apiBase')) $('apiBase').value = State.base;
+  if (remember) {
+    lsSet(LS_BASE, State.base);
+    if (State.token) lsSet(LS_TOK, State.token); else lsDel(LS_TOK);
+  }
+}
+
+function refreshStatus() {
+  if (!State.base) { setOnline(false, 'no API base'); log('connLog', 'No API base set. Enter one above.', 'bad'); return Promise.resolve(); }
+  log('connLog', 'GET ' + State.base + '/_health');
+  return req('/_health', { timeout: 12000 }).then(function (h) {
+    State.health = h;
+    setOnline(true, 'connected');
+    log('connLog', 'healthy — ' + ((h.twins && h.twins.length) || 0) + ' twins loaded', 'ok');
+    renderStatusCards(h);
+    return req('/_version', { timeout: 8000 }).catch(function () { return null; });
+  }).then(function (v) {
+    if (v) log('connLog', 'version ' + (v.version || v.gitSha || 'unknown'));
+    // /_health is deliberately public so load balancers work without a
+    // credential. That means a green pill does NOT prove the token is good.
+    // Probe one gated route so a bad token is caught here, at the lectern,
+    // rather than three clicks later mid-demo.
+    return checkAuth();
+  }).catch(function (e) {
+    setOnline(false, 'unreachable');
+    log('connLog', 'FAILED — ' + e.message, 'bad');
+    log('connLog', 'If the page is on a different origin, the backend must allow CORS. The DTSF runtime does by default.', 'warn');
+    renderStatusCards(null);
+  });
+}
+
+/* ---------- auth probe ----------
+   Distinguishes the three states that all look like "it is broken":
+     reachable + authorised      → ready
+     reachable + 401             → wrong/missing/expired token
+     unreachable                 → wrong base, tunnel down, or host asleep       */
+function checkAuth() {
+  return req('/diplomacy-table/scenarios', { timeout: 10000 }).then(function () {
+    State.authState = 'ok';
+    setOnline(true, State.token ? 'connected · token accepted' : 'connected · open instance');
+    if (State.token) log('connLog', 'token accepted — gated routes are reachable', 'ok');
+    else log('connLog', 'no token in use, and the backend is not requiring one (open instance)', 'warn');
+    return true;
+  }).catch(function (e) {
+    if (e && e.status === 401) {
+      State.authState = 'denied';
+      setOnline(false, State.token ? 'token rejected' : 'token required');
+      log('connLog', State.token
+        ? 'TOKEN REJECTED (HTTP 401). The host is up; the credential is wrong or has been rotated.'
+        : 'TOKEN REQUIRED (HTTP 401). The host is up but every data route needs a credential.', 'bad');
+      log('connLog', 'Fix: paste the token into the field above and press Connect & probe again.', 'warn');
+      return false;
+    }
+    State.authState = 'unknown';
+    log('connLog', 'auth probe inconclusive — ' + ((e && e.message) || 'unknown error'), 'warn');
+    return false;
+  });
+}
+
+function renderStatusCards(h) {
+  var box = $('statusCards');
+  if (!box) return;
+  if (!h) { box.innerHTML = '<div class="note bad" style="margin:0">Backend unreachable. The reference material on every tab still works; live actions are disabled.</div>'; return; }
+  var twins = h.twins || [];
+  var need = ['diplomacy-table', 'ollama'];
+  var teams = twins.filter(function (t) { return String(t).indexOf('diplomacy-team-') === 0; });
+  var missing = need.filter(function (n) { return twins.indexOf(n) < 0; });
+  var cards = [
+    ['Runtime', h.status || 'ok', h.uptime ? ('up ' + Math.round(h.uptime / 60) + ' min') : 'reachable', 'good'],
+    ['Twins loaded', String(twins.length), twins.slice(0, 6).join(', ') + (twins.length > 6 ? '…' : ''), 'good'],
+    ['Delegation twins', String(teams.length), teams.join(', ') || 'none found', teams.length >= 2 ? 'good' : 'bad'],
+    ['Required twins', missing.length ? 'missing' : 'present', missing.length ? missing.join(', ') : 'diplomacy-table, ollama', missing.length ? 'bad' : 'good']
+  ];
+  box.innerHTML = '<div class="grid3">' + cards.map(function (c) {
+    return '<div class="card" style="margin:0"><div class="hint">' + esc(c[0]) + '</div>' +
+      '<div style="font-size:20px;font-weight:600;margin:4px 0">' + esc(c[1]) + '</div>' +
+      '<div class="hint">' + esc(c[2]) + '</div></div>';
+  }).join('') + '</div>';
+}
+
+function bind(id, fn) { var n = $(id); if (n) n.addEventListener('click', fn); }
+
+bind('btnConnect', function () {
+  applyBase($('apiBase').value, $('chkRemember') && $('chkRemember').checked);
+  refreshStatus();
+});
+bind('btnUseOrigin', function () {
+  if (window.location.protocol === 'file:') { log('connLog', 'Page is on file:// — there is no origin to use.', 'warn'); return; }
+  $('apiBase').value = window.location.origin;
+  applyBase(window.location.origin, $('chkRemember') && $('chkRemember').checked);
+  refreshStatus();
+});
+bind('btnLocal', function () {
+  $('apiBase').value = 'http://localhost:8080';
+  applyBase('http://localhost:8080', $('chkRemember') && $('chkRemember').checked);
+  refreshStatus();
+});
+bind('btnForget', function () {
+  lsDel(LS_BASE); lsDel(LS_TOK);
+  State.base = ''; State.token = '';
+  if ($('apiBase')) $('apiBase').value = '';
+  if ($('apiToken')) $('apiToken').value = '';
+  setOnline(false, 'cleared');
+  log('connLog', 'Stored API base and token cleared from this browser.', 'ok');
+});
+bind('btnShareLink', function (e) {
+  var u = window.location.href.split('#')[0].split('?')[0];
+  var link = u + '?api=' + encodeURIComponent(State.base || '');
+  copyText(link, e.target);
+  log('connLog', 'Shareable link copied: ' + link, 'ok');
+  log('connLog', 'Note: tokens are deliberately not included in shareable links.', 'warn');
+});
+bind('btnRefreshStatus', refreshStatus);
+bind('btnQuickConnect', function () { showTab('connect'); if ($('apiBase')) $('apiBase').focus(); });
+
+bind('btnProbeProviders', function () {
+  log('connLog', 'GET /ollama/_ai/providers');
+  req('/ollama/_ai/providers').then(function (r) {
+    var list = r.providers || r.items || (Array.isArray(r) ? r : []);
+    State.providers = list;
+    log('connLog', 'providers: ' + (list.length ? list.map(function (p) { return p.name; }).join(', ') : 'none registered'), list.length ? 'ok' : 'warn');
+    list.forEach(function (p) {
+      var keyState = p.apiKeyEnvVar ? ('env:' + p.apiKeyEnvVar) : (p.apiKey ? 'INLINE KEY — see security note' : 'no key');
+      log('connLog', '  ' + p.name + ' → ' + (p.endpoint || '?') + '  [' + keyState + ']',
+        p.apiKey && !p.apiKeyEnvVar ? 'warn' : '');
+    });
+  }).catch(function (e) { log('connLog', 'provider probe failed — ' + e.message, 'bad'); });
+});
+
+bind('btnLoadModels', function () { loadModels(); });
+bind('btnModelsRefresh', function () { loadModels(); });
+
+function loadModels() {
+  if (!State.base) { log('connLog', 'Connect first.', 'warn'); return Promise.resolve(); }
+  log('connLog', 'GET /ollama/v1/models');
+  return req('/ollama/v1/models', { timeout: 20000 }).then(function (r) {
+    var data = r.data || r.models || (Array.isArray(r) ? r : []);
+    State.models = data;
+    log('connLog', 'models available: ' + data.length, data.length ? 'ok' : 'warn');
+    renderModels();
+  }).catch(function (e) {
+    log('connLog', 'model list failed — ' + e.message, 'bad');
+    State.models = []; renderModels();
+  });
+}
+
+bind('btnLoadScenarios', function () { loadScenarios(); });
+bind('btnScenRefresh', function () { loadScenarios(); });
+
+function loadScenarios() {
+  if (!State.base) { log('connLog', 'Connect first.', 'warn'); return Promise.resolve(); }
+  return req('/diplomacy-table/scenarios', { timeout: 15000 }).then(function (r) {
+    var list = r.scenarios || r.items || (Array.isArray(r) ? r : []);
+    State.scenarios = list;
+    log('connLog', 'scenarios: ' + list.length, 'ok');
+    renderScenarios();
+  }).catch(function (e) {
+    log('connLog', 'scenario list failed — ' + e.message, 'bad');
+    State.scenarios = []; renderScenarios();
+  });
+}
+
+function renderScenarios() {
+  var box = $('scenList'), cnt = $('scenCount'), dl = $('scenDatalist');
+  zopaPopulateScenarios();
+  if (cnt) cnt.textContent = State.scenarios.length + ' loaded';
+  if (dl) dl.innerHTML = State.scenarios.map(function (s) { return '<option value="' + esc(s.id) + '">'; }).join('');
+  if (!box) return;
+  if (!State.scenarios.length) { box.innerHTML = '<span class="hint">None loaded.</span>'; return; }
+  box.innerHTML = State.scenarios.map(function (s) {
+    var parties = (s.recommendedParties || []).length;
+    var srcs = (s.sources || []).length;
+    return '<div class="card" style="margin:0 0 8px"><b>' + esc(s.title || s.id) + '</b> ' +
+      '<span class="tag">' + esc(s.domain || 'unspecified') + '</span>' +
+      '<div class="hint" style="margin:4px 0">' + esc(s.id) + ' · ' + parties + ' recommended parties · ' +
+      srcs + ' sources · researched ' + esc(s.researchedAt || 'unknown') + '</div>' +
+      '<div style="font-size:13px;color:var(--muted)">' + esc(String(s.context || s.description || '').slice(0, 260)) + '…</div></div>';
+  }).join('');
+}
+
+bind('btnDegraded', function () {
+  req('/diplomacy-table/diagnostics/degraded').then(function (r) {
+    var list = r.degraded || r.parties || [];
+    if (!list.length) { log('connLog', 'no degraded parties — model path healthy', 'ok'); return; }
+    log('connLog', 'DEGRADED parties reported: ' + list.length, 'bad');
+    list.forEach(function (d) { log('connLog', '  ' + (d.teamTwinName || d.party || JSON.stringify(d)) + ' failures=' + (d.failures !== undefined ? d.failures : '?'), 'bad'); });
+  }).catch(function (e) { log('connLog', 'degraded check failed — ' + e.message, 'bad'); });
+});
+/* ═══════════════ REFERENCE DATA ═══════════════ */
+
+var KNOBS = [
+  /* group, name, where, default, mechanical, negotiation, impact */
+  ['Session', 'rules.maxRounds', 'session payload', '10',
+   'Hard cap on rounds. The session auto-concludes when reached.',
+   'The single strongest driver of whether a deal closes. Below 6 rounds, parties rarely get past anchoring and the transcript reads as posturing. Above 14, small models start looping and the marginal round adds nothing. 8–10 is the sweet spot for a live audience.',
+   'high'],
+  ['Session', 'rules.procedureStyle', 'session payload', 'open-table',
+   'Selects the turn-taking regime: everyone in plenary, plenary with caucus breaks, shuttle through a mediator, or proximity talks.',
+   'Changes what information each party has when it speaks. Open-table maximises public commitment and therefore rigidity; caucus and shuttle formats let parties concede privately and are far more likely to close a deal. This is the classic mediation lesson and it reproduces reliably.',
+   'high'],
+  ['Session', 'rules.autoAdvance', 'session payload', 'false',
+   'When true, the round loop advances without an operator call.',
+   'Leave it off for a demo. Manual advance is what lets you stop, read a move aloud, and ask the room what they would have done. The pause is the pedagogy.',
+   'medium'],
+  ['Session', 'rules.sidebarsAllowed', 'session payload', 'false',
+   'Permits bilateral exchanges outside the plenary record.',
+   'Introduces the possibility of coalition formation and of private concessions. Combined with sidebarDisclosure it creates the information-asymmetry problems that make multiparty negotiation genuinely hard.',
+   'high'],
+  ['Session', 'rules.sidebarDisclosure', 'session payload', 'none',
+   'Controls whether sidebar content is revealed to non-participants, and when.',
+   'Full disclosure makes sidebars pointless; none makes suspicion rational. Partial disclosure — the fact of the meeting but not its content — is the most realistic and the most productive for teaching.',
+   'medium'],
+  ['Session', 'rules.caucusReportBack', 'session payload', 'false',
+   'Requires a caucusing party to report to plenary.',
+   'Forces private movement into the public record, which slows concession but improves transparency. Useful for contrasting negotiation cultures.',
+   'medium'],
+  ['Session', 'rules.rightOfReply', 'session payload', 'false',
+   'Grants a party an immediate response slot when named.',
+   'Raises the temperature. Escalatory exchanges become more likely and the transcript gets more adversarial. Turn it on when you want to teach de-escalation.',
+   'medium'],
+  ['Session', 'rules.chairCanSilence', 'session payload', 'false',
+   'Allows the convener to suppress a party for a round.',
+   'A power asymmetry knob. Demonstrates procedural power vividly — a party that loses a turn at a critical moment usually loses the substantive point too.',
+   'medium'],
+  ['Session', 'rules.coalitionsVisible', 'session payload', 'false',
+   'Exposes coalition membership to all parties.',
+   'Visible coalitions trigger counter-coalition formation and hard bargaining; hidden ones produce misjudged concessions. Strong effect in sessions with five or more parties.',
+   'medium'],
+  ['Session', 'openerPartyTwin', 'session payload', 'unset',
+   'Fixes which party speaks first.',
+   'First mover sets the anchor, and the anchor moves the settlement point measurably. Running the identical scenario with a different opener is the cleanest demonstration of anchoring in the whole toolkit.',
+   'high'],
+  ['Session', 'rotateOpener', 'session payload', 'false',
+   'Rotates the opening slot each round.',
+   'Distributes anchoring advantage. Reduces the dominance of a single aggressive party; makes outcomes more centrist and less interesting.',
+   'medium'],
+  ['Session', 'priorSessionId', 'session payload', 'unset',
+   'Links this session to a previous one; prior context is injected.',
+   'Turns a one-shot into a repeated game. Reputation begins to matter, and parties that defected previously get less credit. The most under-used feature in the system.',
+   'high'],
+  ['Party', 'modelOverride', 'party record', 'runtime default',
+   'The model this delegation calls for its turn.',
+   'Asymmetric capability. A stronger model on one side generally produces tighter argumentation and better-defended red lines — but not necessarily a better outcome, because a rigid negotiator can talk itself out of a deal. Excellent counter-intuitive result to run live.',
+   'high'],
+  ['Party', 'provider', 'party record', 'runtime default',
+   'Which registered provider serves the call.',
+   'Operationally decisive: latency, cost and content-filter behaviour all change. A geopolitical scenario on a heavily filtered hosted endpoint can produce refusals that read as capitulation.',
+   'high'],
+  ['Party', 'fallbackModel', 'party record', 'unset',
+   'Secondary model used when the primary fails retryably.',
+   'Pure resilience. Set it for anything live. The fallback is re-windowed for its own class, so a small fallback behind a large primary silently shortens that party\u2019s memory.',
+   'high'],
+  ['Party', 'maxInputTokens', 'party record', 'by model class',
+   'Overrides the input budget, which sets the verbatim transcript window.',
+   'Directly controls how much of the negotiation a delegation remembers. Too small and it repeats itself and trips the self-echo guard; too large and latency climbs. The commonest real fix for a party that keeps restating its opening.',
+   'high'],
+  ['Party', 'participant', 'party record', 'twin',
+   'Whether the seat is played by a twin or by a human.',
+   'Mixed human/AI tables are the most valuable configuration for professional education: the human has to negotiate against a counterpart that never gets tired, never gets angry, and never forgets what was conceded.',
+   'high'],
+  ['Delegation', 'goals[]', 'delegation fixture', 'per twin',
+   'Ranked objectives with tradeability annotations.',
+   'Where a negotiation is actually won or lost. Cross-party tradeable rankings create integrative potential; identical rankings across parties create pure distributive deadlock.',
+   'high'],
+  ['Delegation', 'redLines[]', 'delegation fixture', 'per twin',
+   'Absolute constraints stated in the system prompt.',
+   'Too many red lines and nothing can move. Two or three per party is the practical maximum. A red line placed inside the ZOPA guarantees deadlock — sometimes exactly what you want to teach.',
+   'high'],
+  ['Delegation', 'batna / batnaValue', 'delegation fixture', 'per twin',
+   'The alternative to agreement and its estimated worth.',
+   'The most powerful single number available. Raise one party\u2019s BATNA above the ZOPA midpoint and it will walk; lower it and it will settle on worse terms. Run the same scenario at three BATNA values and the settlement point moves visibly.',
+   'high'],
+  ['Delegation', 'tactics[]', 'delegation fixture', 'per twin',
+   'Authorised named plays with triggers. Claimed tactics outside this list are discarded from the record.',
+   'Constrains the behavioural repertoire. Give one party deadline pressure and the other principled appeal, and the contrast in the tactic ledger becomes the lesson.',
+   'medium'],
+  ['Delegation', 'style / persona', 'delegation fixture', 'per twin',
+   'Thomas–Kilmann style plus temperament, folded into the system prompt.',
+   'Determines concession rate and tone. A table of five compromisers closes fast and teaches nothing; one competing party against four accommodating ones teaches a great deal about coalition dynamics.',
+   'high'],
+  ['Delegation', 'systemPromptOverride', 'delegation fixture', 'generated',
+   'Replaces the assembled system prompt wholesale.',
+   'Full control, full risk. Keep it under ~450 words: past that, on a small model, the transcript starts crowding out the instructions and persona drift sets in around round four.',
+   'medium'],
+  ['Runtime', 'DTSF_DIPLOMACY_ROUND_TIMEOUT_MS', 'environment', '30000',
+   'Per-turn deadline. On expiry the party gets a placeholder move.',
+   'Set below your model\u2019s p95 latency and you manufacture failures that look like the model refusing to engage. Measure the model, then set this to roughly twice the median.',
+   'high'],
+  ['Runtime', 'DTSF_DIPLOMACY_ECHO_THRESHOLD', 'environment', '0.6',
+   'Jaccard similarity above which a move is judged to be echoing the opponent; triggers one anti-mirror retry.',
+   'Lower it and legitimate agreement gets flagged as parroting — quoting a counterparty in order to accept a term is normal diplomatic behaviour. Raise it and genuine mirroring slips through. 0.6 is empirically about right.',
+   'medium'],
+  ['Runtime', 'DTSF_DIPLOMACY_SELF_ECHO_THRESHOLD', 'environment', '0.55',
+   'Similarity to the party\u2019s own last two moves that triggers an anti-repetition retry.',
+   'Firing constantly for one party is a memory-window symptom, not a prompt symptom. Fix maxInputTokens before you rewrite the persona.',
+   'medium'],
+  ['Runtime', 'DTSF_DIPLOMACY_DEGRADED_THRESHOLD', 'environment', '3',
+   'Consecutive failures before a party is reported as degraded.',
+   'Your early-warning light. Check the degraded endpoint before any demo; a non-zero count means at least one seat will produce filler.',
+   'medium'],
+  ['Runtime', 'DTSF_DIPLOMACY_WARMUP_TIMEOUT_MS', 'environment', 'runtime default',
+   'Budget for pre-warming each delegation before round one.',
+   'Cold local weights can take a minute to load. Warmup moves that cost into setup instead of into the first round, where the audience is watching.',
+   'low'],
+  ['Runtime', 'DTSF_OLLAMA_MODE', 'environment', 'live',
+   'live | mock | recorded.',
+   'Mock and recorded modes give a deterministic, zero-latency, zero-cost run. Recorded mode is the correct fallback for a conference demo on hostile network conditions.',
+   'high'],
+  ['Runtime', 'DTSF_SNAPSHOT_INTERVAL_MS', 'environment', '300000',
+   'How often twin state is written to disk.',
+   'Five minutes is a lot of negotiation to lose. Shorten it to 60 s before a graded exercise and take a manual snapshot immediately before you start.',
+   'medium'],
+  ['Runtime', 'DTSF_SNAPSHOT_RETAIN', 'environment', 'runtime default',
+   'How many snapshot generations are kept.',
+   'Retention is your undo history. Keep enough to roll back to the start of a session you want to re-run identically.',
+   'low'],
+  ['Runtime', '/_cache TTL', 'runtime service', '30 s, 500 entries',
+   'Caches twin GET/POST responses; writes invalidate the twin.',
+   'Almost always helpful, occasionally confusing: a stale scoreboard for up to 30 s during a live demo looks like a bug. Bypass with a no-cache header when demonstrating immediate effect.',
+   'low'],
+  ['Runtime', '/_proxy rate limit', 'runtime service', '120 req/min per IP',
+   'Inbound per-IP shield with allow/block lists.',
+   'The console polls several endpoints every second or two. A room full of people each running their own console will hit this. Raise it or allow-list the room before a large session.',
+   'medium']
+];
+
+var EXPERIMENTS = [
+  ['Anchoring', 'Run the identical scenario twice, changing only <code>openerPartyTwin</code>.',
+   'The settlement point shifts toward whoever opened. Ask the room to predict the direction before the second run.'],
+  ['BATNA power', 'Hold everything constant; change one party\u2019s <code>batnaValue</code> from below the ZOPA midpoint to above it.',
+   'That party stops conceding and starts threatening to walk. The clearest demonstration in the toolkit that leverage is structural, not rhetorical.'],
+  ['Procedure', 'Same scenario under <code>open-table</code>, then under <code>plenary-with-caucus</code> with sidebars allowed.',
+   'Caucus formats close deals that open-table formats cannot, because concessions can be made without public loss of face.'],
+  ['Capability asymmetry', 'Give one delegation a substantially stronger model.',
+   'Argument quality rises; outcome does not reliably improve. A more capable negotiator defends red lines better and sometimes negotiates itself out of a viable deal.'],
+  ['Memory', 'Halve one party\u2019s <code>maxInputTokens</code>.',
+   'Self-echo retries climb and the party begins restating its opening. Demonstrates that apparent stubbornness can be an artefact of memory, not of policy.'],
+  ['Round budget', 'Run at 6 rounds, then 10, then 16.',
+   'Deal rate rises steeply to about 10 and then flattens; beyond that, loops and filler. Good for teaching that time pressure is a design variable.'],
+  ['Repeated game', 'Run a session, then a second with <code>priorSessionId</code> set.',
+   'Parties reference prior conduct. Reputation effects appear without any change to the prompts.'],
+  ['Red-line density', 'Add a fourth and fifth red line to one delegation.',
+   'Movement collapses. Illustrates that an over-constrained mandate is indistinguishable from bad faith at the table.'],
+  ['Style mix', 'Set every party to <code>compromising</code>, then re-run with one <code>competing</code> party.',
+   'The all-compromiser table closes quickly and dully. One competing party reshapes the entire distribution of gains.'],
+  ['Failure injection', 'Point one party at a nonexistent model with no <code>fallbackModel</code>.',
+   'Placeholder moves appear and the degraded counter rises. Worth doing once, privately, so the failure signature is familiar before it happens live.']
+];
+
+var MODEL_CLASSES = [
+  ['gpt-5-mini-class', 'gpt-5-mini and equivalents', '4 000', '3',
+   '~1 700 tokens after fixed overhead',
+   'Very short memory. Fine for a two-party, short-round demo; unreliable past round six. Expect self-echo retries.'],
+  ['gpt-5-nano-class', 'gpt-5-nano and equivalents', '4 000', '3',
+   '~1 700 tokens after fixed overhead',
+   'Fastest and cheapest. Use for warmups, smoke tests and load rehearsal, not for a graded exercise.'],
+  ['chat-tier', 'general chat-optimised models', '16 000', '10',
+   '~14 300 tokens after fixed overhead',
+   'The default recommendation for delegation turns. Enough memory for a full ten-round session with headroom.'],
+  ['reasoning', 'o1 / o3 / gpt-5 reasoning families (not <code>*-chat</code>)', '32 000', '8',
+   '~30 300 tokens after fixed overhead',
+   'Strong analysis, but temperature is forced, structured-output enforcement is suppressed, and latency is far higher. Right for debrief; wrong for the hot path.'],
+  ['local-llama', 'llama-family weights served locally', '8 000', '10',
+   '~6 300 tokens after fixed overhead',
+   'The sovereignty option: no data leaves the box, no content filter, predictable cost. Needs real GPU memory and a warmup pass.'],
+  ['large-context', 'long-context models', '128 000', '12',
+   '~126 300 tokens after fixed overhead',
+   'Window is never the constraint. Watch cost and latency instead — a twelve-move verbatim window on every turn is not free.']
+];
+
+var TACTICS = [
+  ['Anchoring', 'An early, specific numeric or positional commitment, especially in the opening rounds.', '0.7–1.0',
+   'The opening anchor moves the settlement point more than any subsequent argument. Have the room record their predicted outcome after the first anchor and compare at the end.'],
+  ['Counter-anchoring', 'A competing figure offered against a substantial run of prior anchors, with meaningful lexical overlap with the anchor being countered.', '0.5–0.8',
+   'Deliberately conservative. It was retuned after a measured false-positive rate around two in five; the current rule is the story of how you tighten a detector using data.'],
+  ['Concession', 'Movement away from a previously stated position on the same issue.', '0.6–0.9',
+   'Track concession sequence, not just count. Reciprocated concessions signal an integrative track; unilateral ones signal a party bidding against itself.'],
+  ['Log-rolling', 'An explicit linkage of two issues — movement on one traded for movement on another.', '0.6–0.9',
+   'The signature of integrative bargaining. If it never appears, your scenario probably lacks the secondary issues that make trades possible.'],
+  ['Deadline pressure', 'Invocation of time limits, expiry, or a closing window.', '0.5–0.9',
+   'Effective against parties with a weak BATNA and counter-productive against strong ones. A clean way to show that leverage is relational.'],
+  ['Threat / escalation', 'A stated adverse consequence conditional on non-agreement.', '0.6–1.0',
+   'Watch what happens next: credible threats produce movement, non-credible ones produce hardening and cost the threatening party standing.'],
+  ['Principled appeal', 'Argument from law, precedent, fairness or an objective standard.', '0.4–0.8',
+   'The Fisher–Ury "objective criteria" move. Notice which parties reach for it — usually the ones whose material leverage is weakest.'],
+  ['Coalition signalling', 'Alignment with, or appeal to, another party at the table.', '0.5–0.8',
+   'In multiparty sessions this is the mechanism that decides outcomes. Compare runs with coalitions visible and hidden.'],
+  ['Reframing', 'Restating the issue in a different frame — from zero-sum to joint-gain, or from technical to political.', '0.4–0.7',
+   'Often the hinge of a stuck negotiation. Hard to detect reliably by rule; treat detections here with the most scepticism.'],
+  ['Stalling / deflection', 'Non-responsive movement: procedure raised in place of substance.', '0.3–0.7',
+   'Distinguish tactical stalling from a genuine mandate constraint. The delegation\u2019s goal list tells you which it is — and that is a good exam question.']
+];
+
+var PHASES = [
+  ['Phase 1 — Frame the question', 'Decide what the exercise must teach before you research anything. "How does a coastal state trade transit access for security guarantees?" is a frame. "Simulate the Gulf" is not. The frame determines which facts matter and stops the research from sprawling.'],
+  ['Phase 2 — Map the parties', 'List every actor with the power to block or enable an agreement. For each: formal position, underlying interest, domestic constraint, and who they answer to. Actors who cannot block and cannot enable are context, not parties — keep the table to three to five seats.'],
+  ['Phase 3 — Establish the factual base', 'Build a dated timeline from Tier-1 sources: what was agreed, when, by whom, and what has changed since. Every entry carries a citation. This becomes <code>history</code>, <code>pastAgreements</code> and <code>recentEvents</code>.'],
+  ['Phase 4 — Design the deal space', 'Fix the numbers: the issue scale, each party\u2019s reservation value, the resulting ZOPA, each BATNA, and at least two secondary issues ranked oppositely. Do this before writing prose — prose-first scenarios almost always have no ZOPA or a trivially wide one.'],
+  ['Phase 5 — Write the shared context', 'Everything all parties know. Neutral in tone, free of assessment, free of anything that telegraphs the intended outcome. If a sentence would embarrass you in front of a subject-matter expert from any of the parties, rewrite it.'],
+  ['Phase 6 — Write the delegations', 'Per party: persona, ranked goals with tradeability, two or three red lines, BATNA with a value, authorised tactics, and private guidance. Copy an existing delegation pack, replace the fixture, restart the runtime.'],
+  ['Phase 7 — Calibrate', 'Run the scenario at least three times. Watch for: no movement by round four, a deal in round two, placeholder moves, self-echo retries, or every party sounding identical. Each has a specific fix. Iterate until three consecutive runs are plausible to a subject-matter expert.']
+];
+
+var SCENARIO_FIELDS = [
+  ['id', 'yes', 'Stable identifier referenced by sessions.', 'Kebab-case, prefixed <code>scenario-</code>. Never reuse an id after a scenario\u2019s facts change — version it instead.'],
+  ['title', 'yes', 'Human-readable name shown in the console.', 'Name the negotiation, not the crisis: "Hormuz transit assurances", not "Iran tensions".'],
+  ['domain', 'recommended', 'Classification: geopolitical, commercial, humanitarian, regulatory.', 'Used for filtering and for choosing a sensible default procedure style.'],
+  ['context', 'yes', 'The shared factual picture given to every party.', '250–600 words. Neutral. No assessment, no adjectives that pick a side, nothing that hints at the intended landing zone.'],
+  ['history', 'recommended', 'Dated antecedents.', 'Tier-1 sourced. Include only what bears on the current issue — a complete history is a worse scenario than a relevant one.'],
+  ['recentEvents', 'recommended', 'What has changed lately and why talks are happening now.', 'Tier-1 or two independent Tier-2 sources. This field creates urgency; without it parties have no reason to move.'],
+  ['pastAgreements', 'recommended', 'Prior instruments and their status.', 'Give the actual instrument name and date. Delegations cite these, and a subject-matter expert will check.'],
+  ['impacts', 'optional', 'Who bears the consequences of failure.', 'Raises the stakes and gives principled-appeal tactics something to appeal to.'],
+  ['recommendedParties', 'yes', 'Suggested seats with delegation twin names.', 'Three to five. Each must be able to block or enable agreement.'],
+  ['recommendedRules', 'recommended', 'Default session rules for this scenario.', 'Encode the procedural realism here: a multilateral crisis is not an open table.'],
+  ['sources', 'yes for any real-world scenario', 'Citation list with tier annotations.', 'This is what makes the artefact defensible. A scenario without sources cannot be used in a graded exercise.'],
+  ['researchedAt', 'yes', 'Date the factual base was last verified.', 'Facts decay. Anything older than about ninety days on a live geopolitical scenario needs re-verification before use.']
+];
+
+var QA_GATE = [
+  'Every hard number and every date in <code>context</code> traces to a Tier-1 source.',
+  'Every <code>recentEvents</code> item has a Tier-1 source or two independent Tier-2 sources.',
+  'No Tier-3 material appears outside a party\u2019s private guidance.',
+  'The ZOPA is defined numerically and is between roughly 5 % and 25 % of the issue range.',
+  'Each party has a BATNA with a value on the same scale as the issue.',
+  'No red line falls inside the ZOPA — unless deadlock is the intended lesson, and that is documented.',
+  'At least two secondary issues exist, ranked oppositely by at least two parties.',
+  'Removing any one party makes the deal materially easier — no decorative seats.',
+  'Delegation prompts are under ~450 words each.',
+  'Each delegation has two or three red lines, not five.',
+  'Three consecutive calibration runs produced plausible, non-repetitive transcripts.',
+  'Zero placeholder moves and zero degraded parties across those three runs.',
+  'A subject-matter expert who was not involved in authoring has read the shared context and not objected.',
+  '<code>researchedAt</code> is within ninety days for a live real-world scenario.',
+  'If the scenario is fictional or hybrid, that is stated explicitly in the description.'
+];
+
+var METRICS = [
+  ['Rounds to agreement', 'Round index at which a deal was recorded, or the cap if none.',
+   'Between 5 and 9. Enough that positions moved, not so many that the model looped.',
+   'A fast deal usually means the ZOPA is too wide, not that the model is good.'],
+  ['Placeholder moves', 'Moves marked as placeholders after the guard ladder exhausted its retries.',
+   'Zero. Any non-zero count invalidates a comparison run.',
+   'Almost always an infrastructure symptom — timeout, cold model, filter — not a model-quality symptom.'],
+  ['Self-echo retries', 'Anti-repetition retries triggered per session.',
+   'Under two per session, per the validation gate.',
+   'Concentrated in one party means that party\u2019s memory window is too small. Spread evenly means the scenario lacks new material.'],
+  ['Tactic mix', 'Distribution of detected tactics across parties.',
+   'Varied, with different profiles per party.',
+   'Rule-based detection with known false positives. Read as a prompt for discussion, not as a measurement.'],
+  ['Satisfaction spread', 'Difference between the highest and lowest self-reported party satisfaction.',
+   'Non-zero and asymmetric — a real negotiation rarely leaves everyone equally content.',
+   'Self-reported by the delegations themselves. Better evidence of persona coherence than of negotiation skill.'],
+  ['Red lines crossed', 'Count of moves that violate a stated red line.',
+   'Zero. A crossed red line is a prompt-adherence failure.',
+   'The single best cheap proxy for instruction-following quality across models.'],
+  ['Wall-clock per round', 'Elapsed time for a full round across all parties.',
+   'Under 45 s for a live demo; the room notices beyond a minute.',
+   'Sequential by design, so it scales linearly with party count. Five parties is roughly five times two.'],
+  ['JSON validity rate', 'Proportion of turns returning a well-formed move on first attempt.',
+   '100 %. Anything less on a modern model indicates a prompt or output-format problem.',
+   'Reasoning models suppress structured-output enforcement, so they fail here more often than their raw capability suggests.']
+];
+
+var RUNSHEET = [
+  ['T&minus;7d', 'Scenario freeze', 'Scenario researched, calibrated over at least three runs, and reviewed by a subject-matter expert. Delegation fixtures final.',
+   'Nothing changes after this point. Late scenario edits are the most common cause of a bad demo.'],
+  ['T&minus;2d', 'Recorded fallback', 'Run the full scenario end to end and archive the transcript bundle. Verify the static frontend can replay it with no backend.',
+   'Costs an hour. This is the difference between a bad day and a cancelled session.'],
+  ['T&minus;1d', 'Infrastructure rehearsal', 'Full preflight on the exact hardware and network you will use. Snapshot taken. Degraded count zero.',
+   'Rehearse on the room\u2019s network, not on yours. Conference Wi-Fi is the leading cause of live failure.'],
+  ['T&minus;2h', 'Cold-start warmup', 'Boot the runtime, warm every delegation model, run one throwaway session, then restore the pre-session snapshot.',
+   'Local weights can take a minute per model to load. Pay that cost now, not in round one.'],
+  ['T&minus;15m', 'Final preflight', 'Health, version, providers, model probe, scenario present, snapshot fresh, degraded zero. Console open on the connect tab.',
+   'Run the automated checks above. If any fail, switch to recorded mode before the room fills.'],
+  ['0:00–0:10', 'Frame the exercise', 'What this is and is not. Show the architecture tab. State that delegations run against written instructions, and that those instructions are visible and editable.',
+   'Do not start with the AI. Start with the method. A PME audience will disengage from a magic trick within ninety seconds.'],
+  ['0:10–0:20', 'Walk the scenario', 'Show the shared context, the sources, and one delegation\u2019s full instruction set including its red lines and BATNA.',
+   'Showing a delegation\u2019s private mandate is what converts scepticism into engagement. Do it before any model speaks.'],
+  ['0:20–0:40', 'Run rounds 1–4 with manual advance', 'Read the opening anchor aloud. Ask the room to predict where this lands. Advance one round at a time; pause on any move worth arguing about.',
+   'Manual advance is the pedagogy. Resist the urge to let it run.'],
+  ['0:40–0:55', 'Intervene and re-run', 'Change one knob live — the opener, or one party\u2019s BATNA value — and re-run the first three rounds. Compare.',
+   'Have the second session pre-created and pre-warmed. Creating a session live in front of an audience is an avoidable risk.'],
+  ['0:55–1:10', 'Complete and read the outcome', 'Run to conclusion, show the scoreboard, the tactic ledger, and the convener report.',
+   'Point out at least one tactic detection you believe is wrong. Credibility comes from naming your own failure modes first.'],
+  ['1:10–1:25', 'Structured critique', 'Work through the evaluation instrument. Harvest implausible moves and what would fix them.',
+   'This is the highest-value segment. Budget it properly and take notes — it is how the scenario library improves.'],
+  ['1:25–1:30', 'Close', 'What this could do for a staff group: rehearse a negotiation, stress-test a mandate, generate red-team positions.',
+   'Offer the artefacts — scenario, transcripts, config — as a takeaway. Do not offer to run it on anything sensitive.']
+];
+
+var FAILMODES = [
+  ['A party emits a placeholder or filler move', 'Moderate on hosted APIs; low on warmed local models',
+   'Say what happened, advance the round, and continue. If it recurs for the same party, patch that party to the fallback model mid-session.',
+   '"That seat just failed to produce a usable response inside the time budget. The system marked it rather than inventing something — which is the behaviour you want."'],
+  ['A round takes far longer than rehearsed', 'Moderate on shared or metered endpoints',
+   'Talk over it: use the wait to walk the delegation\u2019s instruction set on screen. Do not refresh the console.',
+   '"Turns are sequential by design so each delegation sees what was just said. That is a fidelity choice with a latency cost."'],
+  ['Content filter refuses a geopolitical move', 'Real on hosted enterprise endpoints',
+   'The twin auto-routes to a non-filtered fallback. If none is configured, switch that party to the local model.',
+   '"Hosted models carry safety policies that can decline to role-play a state actor. That is exactly why a sovereign local option matters for this kind of work."'],
+  ['Backend unreachable from the venue', 'Moderate on conference networks',
+   'Switch the console to the local box, or fall back to the recorded transcript bundle.',
+   'Say nothing about the network. Switch and continue — the audience should never learn the topology failed.'],
+  ['A delegation repeats itself', 'Common with small models past round six',
+   'Raise that party\u2019s <code>maxInputTokens</code> or move it to a larger class. It is a memory problem.',
+   '"That delegation has literally forgotten the middle of the conversation. Watch what happens when I give it a larger window."'],
+  ['A tactic detection is obviously wrong', 'Expected — the detectors are rule-based',
+   'Nothing. Use it.',
+   '"That is a false positive, and I can show you the rule that produced it. An explainable wrong answer is more useful in this setting than an unexplainable right one."'],
+  ['The room challenges a fact in the scenario', 'Likely with a subject-matter expert audience',
+   'Open the sources list and cite. If they are right, record it and say the scenario will be corrected.',
+   '"Every factual claim in the shared context is sourced — here is the citation. If it is wrong, that is a research defect and I will fix it."'],
+  ['Deal closes in round two', 'Occurs when the ZOPA is too wide',
+   'Re-run with a tightened reservation value or a raised BATNA on one side.',
+   '"That closed too easily, which tells us the deal space I designed was too generous. Let me tighten it and show you the difference."'],
+  ['Every action fails with HTTP 401', 'Real whenever the backend runs with <code>DTSF_AUTH_TOKEN</code> set',
+   'Paste the token into the Connect tab and press <b>Connect &amp; probe</b>. Note that <code>/_health</code> is public, so the status pill can read green while every data call is refused — the console\u2019s auth probe is what tells you which of the two is wrong.',
+   'Say nothing about credentials. Reconnect and continue; this is indistinguishable from a slow page to the room. Rehearse the recovery so it takes under fifteen seconds.']
+];
+
+var PREFLIGHT = [
+  ['health', 'Runtime responds on <code>/_health</code>', 'auto'],
+  ['auth', 'Credential accepted — a gated route returns data, not 401', 'auto'],
+  ['version', 'Build identifier recorded for the run', 'auto'],
+  ['twins', 'Table twin and at least two delegation twins loaded', 'auto'],
+  ['providers', 'At least one provider registered, keys via environment variables', 'auto'],
+  ['models', 'Every model named in the session config appears in the catalog', 'auto'],
+  ['scenario', 'The demo scenario is present and its id matches the session config', 'auto'],
+  ['degraded', 'Degraded-party count is zero', 'auto'],
+  ['warmup', 'Every delegation model has served at least one real turn since boot', 'manual'],
+  ['snapshot', 'Manual snapshot taken immediately before the session', 'manual'],
+  ['fallback', 'Recorded transcript bundle staged and verified to replay offline', 'manual'],
+  ['timeout', 'Round timeout is at least twice the measured median turn latency', 'manual'],
+  ['network', 'Rehearsed on the venue network, with the local box as a tested fallback', 'manual'],
+  ['power', 'Machine on mains, sleep disabled, notifications silenced, second display mirrored', 'manual'],
+  ['sensitivity', 'Scenario confirmed unclassified and appropriate for the model endpoints in use', 'manual']
+];
+
+var LEVERS = [
+  ['1', 'BATNA value relative to the ZOPA', 'Set <code>batnaValue</code> above or below the midpoint of the zone of possible agreement.',
+   'Largest single effect. Determines whether a party settles or walks, independent of everything else in its prompt.'],
+  ['2', 'Goal ranking across parties', 'Ensure each party\u2019s lower-priority goals are cheap concessions for another party.',
+   'Creates or destroys integrative potential. Without cross-party tradeable rankings the session is purely distributive and closes badly.'],
+  ['3', 'Procedure style', 'Switch between open-table, caucus and shuttle formats.',
+   'Caucus and shuttle formats materially raise the deal rate by allowing private concession.'],
+  ['4', 'Red-line count and placement', 'Two or three per party; never inside the ZOPA unless deadlock is the lesson.',
+   'Over-constrained mandates produce immovable parties that read as bad faith.'],
+  ['5', 'Round budget', 'Set <code>maxRounds</code> between 8 and 10 for most scenarios.',
+   'Too few and it never gets past anchoring; too many and small models loop.'],
+  ['6', 'Opening order', 'Fix <code>openerPartyTwin</code> or enable rotation.',
+   'Anchoring advantage. Measurable shift in settlement point between runs.'],
+  ['7', 'Persona style mix', 'Vary Thomas–Kilmann styles across the table.',
+   'Determines concession rates and the texture of the transcript. Homogeneous tables are dull.'],
+  ['8', 'Model capability and memory', 'Set <code>modelOverride</code> and <code>maxInputTokens</code> per party.',
+   'Affects argument quality and consistency more than it affects who wins. Undersized memory is the most common hidden cause of a party that "won\u2019t move".'],
+  ['9', 'Prior session linkage', 'Set <code>priorSessionId</code>.',
+   'Introduces reputation. Changes behaviour without changing a single instruction.'],
+  ['10', 'Tactic authorisation', 'Grant or withhold specific tactic ids per delegation.',
+   'Shapes the behavioural repertoire and makes the ledger legible as a contrast between parties.']
+];
+
+/* ═══════════════ RENDERERS ═══════════════ */
+
+function renderKnobs() {
+  var q = ($('knobSearch') && $('knobSearch').value || '').toLowerCase();
+  var g = ($('knobGroup') && $('knobGroup').value) || '';
+  var im = ($('knobImpact') && $('knobImpact').value) || '';
+  var list = KNOBS.filter(function (k) {
+    if (g && k[0] !== g) return false;
+    if (im && k[6] !== im) return false;
+    if (!q) return true;
+    return k.join(' ').toLowerCase().indexOf(q) >= 0;
+  });
+  var badge = { high: 'tag bad', medium: 'tag warn', low: 'tag info' };
+  rows('knobTable', list, function (k) {
+    return [
+      '<code>' + k[1] + '</code><div class="hint" style="margin-top:3px"><span class="tag">' + esc(k[0]) +
+        '</span> <span class="' + badge[k[6]] + '">' + esc(k[6]) + '</span></div>',
+      esc(k[2]),
+      '<code>' + esc(k[3]) + '</code>',
+      k[4],
+      k[5]
+    ];
+  });
+  if ($('knobCount')) $('knobCount').textContent = list.length + ' of ' + KNOBS.length;
+}
+
+function renderExperiments() {
+  var box = $('experiments');
+  if (!box) return;
+  box.innerHTML = EXPERIMENTS.map(function (e, i) {
+    return '<div class="card" style="margin:0"><h4 style="margin-top:0">' + (i + 1) + '. ' + esc(e[0]) + '</h4>' +
+      '<p style="margin:0 0 8px"><b>Do:</b> ' + e[1] + '</p>' +
+      '<p style="margin:0;color:var(--muted)"><b>Expect:</b> ' + e[2] + '</p></div>';
+  }).join('');
+}
+
+function renderClasses() {
+  rows('classTable', MODEL_CLASSES, function (c) {
+    return ['<code>' + esc(c[0]) + '</code>', c[1], esc(c[2]), '<b>' + esc(c[3]) + '</b>', esc(c[4]), c[5]];
+  });
+}
+
+function classifyModelName(id) {
+  var s = String(id || '').toLowerCase();
+  if (/gpt-5-nano/.test(s)) return 'gpt-5-nano-class';
+  if (/gpt-5-mini/.test(s)) return 'gpt-5-mini-class';
+  if (/(^|[^a-z])(o1|o3)([^a-z]|$)/.test(s) || (/gpt-5/.test(s) && !/-chat/.test(s))) return 'reasoning';
+  if (/llama|mistral|qwen|phi|gemma|deepseek/.test(s)) return 'local-llama';
+  if (/128k|1m|long|large-context|claude|gemini/.test(s)) return 'large-context';
+  return 'chat-tier';
+}
+function isReasoningName(id) {
+  var s = String(id || '').toLowerCase();
+  if (/-chat/.test(s)) return false;
+  return /(^|[^a-z])(o1|o3)([^a-z]|$)/.test(s) || /gpt-5/.test(s) && !/mini|nano/.test(s);
+}
+function suggestJob(cls, reasoning) {
+  if (reasoning) return 'Debrief / after-action only — latency and forced temperature make it wrong for the hot path.';
+  if (cls === 'gpt-5-nano-class') return 'Warmup, smoke tests, load rehearsal.';
+  if (cls === 'gpt-5-mini-class') return 'Short two-party demos; expect self-echo past round six.';
+  if (cls === 'local-llama') return 'Delegation turns where sovereignty or filter-freedom matters.';
+  if (cls === 'large-context') return 'Delegation turns in long sessions; watch cost.';
+  return 'Delegation turns — the default recommendation.';
+}
+
+function renderModels() {
+  var tb = qs('#modelTable tbody');
+  if (!tb) return;
+  var f = ($('modelFilter') && $('modelFilter').value || '').toLowerCase();
+  var list = State.models.map(function (m) { return typeof m === 'string' ? { id: m } : m; })
+    .filter(function (m) { return !f || String(m.id || '').toLowerCase().indexOf(f) >= 0; });
+  if ($('modelCount')) $('modelCount').textContent = list.length + ' shown';
+  if (!list.length) { tb.innerHTML = '<tr><td colspan="5" class="hint">No models. Fetch the catalog, or check the provider registration.</td></tr>'; return; }
+  tb.innerHTML = list.map(function (m) {
+    var cls = classifyModelName(m.id);
+    var reasoning = isReasoningName(m.id);
+    var prof = MODEL_CLASSES.filter(function (c) { return c[0] === cls; })[0];
+    return '<tr><td><code>' + esc(m.id) + '</code></td><td><span class="tag">' + esc(cls) + '</span></td>' +
+      '<td>' + (reasoning ? '<span class="tag warn">yes</span>' : 'no') + '</td>' +
+      '<td>' + esc(prof ? prof[3] : '?') + '</td><td>' + esc(suggestJob(cls, reasoning)) + '</td></tr>';
+  }).join('');
+}
+
+function renderTactics() {
+  rows('tacticTable', TACTICS, function (t) {
+    return ['<b>' + esc(t[0]) + '</b>', t[1], '<code>' + esc(t[2]) + '</code>', t[3]];
+  });
+}
+function renderLevers() {
+  rows('leverTable', LEVERS, function (l) { return ['<b>' + esc(l[0]) + '</b>', esc(l[1]), l[2], l[3]]; });
+}
+function renderPhases() {
+  var box = $('phases');
+  if (!box) return;
+  box.innerHTML = PHASES.map(function (p) {
+    return '<div class="card" style="margin:0"><h4 style="margin-top:0">' + esc(p[0]) + '</h4>' +
+      '<p style="margin:0;color:var(--muted)">' + p[1] + '</p></div>';
+  }).join('');
+}
+function renderScenarioFields() {
+  rows('scenarioFields', SCENARIO_FIELDS, function (f) {
+    var req = f[1] === 'yes' ? '<span class="tag bad">required</span>'
+      : f[1] === 'recommended' ? '<span class="tag warn">recommended</span>'
+      : '<span class="tag info">' + esc(f[1]) + '</span>';
+    return ['<code>' + esc(f[0]) + '</code>', req, esc(f[2]), f[3]];
+  });
+}
+function renderMetrics() {
+  rows('metricTable', METRICS, function (m) { return ['<b>' + esc(m[0]) + '</b>', esc(m[1]), esc(m[2]), esc(m[3])]; });
+}
+function renderRunsheet() {
+  rows('runsheet', RUNSHEET, function (r) { return ['<code>' + r[0] + '</code>', '<b>' + esc(r[1]) + '</b>', esc(r[2]), r[3]]; });
+}
+function renderFailModes() {
+  rows('failTable', FAILMODES, function (f) {
+    return ['<b>' + esc(f[0]) + '</b>', '<span class="hint">' + esc(f[1]) + '</span>', f[2],
+      '<span style="color:var(--muted);font-style:italic">' + esc(f[3]) + '</span>'];
+  });
+}
+
+/* ---------- checklists ---------- */
+function renderChecklist(boxId, items, key, onChange) {
+  var box = $(boxId);
+  if (!box) return;
+  box.innerHTML = items.map(function (t, i) {
+    return '<label class="chk"><input type="checkbox" data-k="' + key + '-' + i + '" /><span>' + t + '</span></label>';
+  }).join('');
+  qa('input[type=checkbox]', box).forEach(function (cb) {
+    cb.checked = lsGet('dtsf.chk.' + cb.dataset.k) === '1';
+    cb.addEventListener('change', function () {
+      lsSet('dtsf.chk.' + cb.dataset.k, cb.checked ? '1' : '0');
+      if (onChange) onChange();
+    });
+  });
+  if (onChange) onChange();
+}
+function checklistScore(boxId, labelId, noun) {
+  var box = $(boxId), out = $(labelId);
+  if (!box || !out) return;
+  var all = qa('input[type=checkbox]', box);
+  var done = all.filter(function (c) { return c.checked; }).length;
+  out.textContent = done + ' of ' + all.length + ' ' + noun + (done === all.length && all.length ? ' — clear to run' : '');
+  out.style.color = (all.length && done === all.length) ? 'var(--success)' : 'var(--muted)';
+}
+
+/* ═══════════════ DELEGATION BUILDER ═══════════════ */
+function parseLines(v) {
+  return String(v || '').split(/\r?\n/).map(function (s) { return s.trim(); }).filter(Boolean);
+}
+function buildDelegation() {
+  var goals = parseLines($('dGoals').value).map(function (l, i) {
+    var p = l.split('|').map(function (s) { return s.trim(); });
+    return { priority: parseInt(p[0], 10) || (i + 1), goal: p[1] || p[0], tradeableAgainst: p[2] || 'nothing' };
+  });
+  var tactics = parseLines($('dTactics').value).map(function (l) {
+    var p = l.split('|').map(function (s) { return s.trim(); });
+    return { id: p[0], trigger: p[1] || 'operator discretion' };
+  });
+  var fx = {
+    twinName: $('dName').value.trim() || 'diplomacy-team-unnamed',
+    displayName: $('dDisplay').value.trim() || 'Unnamed Delegation',
+    role: $('dRole').value.trim(),
+    persona: { style: $('dStyle').value, temperament: $('dTemp').value.trim() },
+    goals: goals,
+    redLines: parseLines($('dRed').value),
+    batna: { description: $('dBatna').value.trim(), estimatedValue: Number($('dBatnaVal').value) || 0 },
+    tactics: tactics
+  };
+  var prompt = renderPrompt(fx);
+  fx.systemPromptOverride = prompt;
+  $('delegationOut').textContent = JSON.stringify(fx, null, 2);
+  $('promptOut').textContent = prompt;
+  var words = prompt.split(/\s+/).length;
+  if (words > 450) {
+    $('promptOut').textContent = prompt + '\n\n/* WARNING: ' + words +
+      ' words. Over ~450 the transcript starts crowding out instructions on small models. Trim. */';
+  }
+  return fx;
+}
+function renderPrompt(fx) {
+  var L = [];
+  L.push('You are ' + fx.displayName + (fx.role ? ' — ' + fx.role : '') + '.');
+  L.push('Negotiating style: ' + fx.persona.style + '. ' + (fx.persona.temperament || ''));
+  L.push('');
+  L.push('YOUR OBJECTIVES, in priority order:');
+  fx.goals.forEach(function (g) {
+    L.push('  ' + g.priority + '. ' + g.goal + '  [tradeable against: ' + g.tradeableAgainst + ']');
+  });
+  L.push('');
+  L.push('RED LINES — you may never accept these, under any circumstances:');
+  (fx.redLines.length ? fx.redLines : ['(none declared)']).forEach(function (r) { L.push('  - ' + r); });
+  L.push('');
+  L.push('IF NO AGREEMENT IS REACHED: ' + (fx.batna.description || '(undefined)') +
+    '  [estimated value: ' + fx.batna.estimatedValue + '/100]');
+  L.push('You should accept a deal only if it is worth more to you than this alternative.');
+  L.push('');
+  L.push('AUTHORISED TACTICS — you may use only these, and only when the trigger applies:');
+  (fx.tactics.length ? fx.tactics : [{ id: '(none)', trigger: '' }]).forEach(function (t) {
+    L.push('  - ' + t.id + (t.trigger ? '  (' + t.trigger + ')' : ''));
+  });
+  L.push('');
+  L.push('OUTPUT: return a single JSON object with your move. Keep the statement under 120 words.');
+  L.push('Do not include commentary, stage directions, or explanation outside the JSON.');
+  L.push('');
+  L.push('IDENTITY LOCK: speak only as ' + fx.displayName + '. Never write dialogue, positions or');
+  L.push('concessions for any other party. Never summarise the negotiation from a neutral standpoint.');
+  L.push('DO NOT restate your previous move. Each turn must advance your position, respond to what was');
+  L.push('just said, or make a concrete proposal.');
+  return L.join('\n');
+}
+bind('btnBuildDelegation', buildDelegation);
+bind('btnCopyDelegation', function (e) { copyText($('delegationOut').textContent, e.target); });
+bind('btnLoadExample', function () {
+  $('dName').value = 'diplomacy-team-atlantica';
+  $('dDisplay').value = 'Republic of Atlantica';
+  $('dRole').value = 'Coastal state; host of the disputed deep-water terminal';
+  $('dStyle').value = 'competing';
+  $('dTemp').value = 'Formal and legalistic. Slow to concede, but honours what it signs.';
+  $('dGoals').value = '1 | Retain sovereign control of the terminal | nothing\n2 | Secure a 15-year minimum throughput guarantee | tariff schedule\n3 | Avoid binding third-party arbitration | inspection regime\n4 | Preserve the option to raise transit fees after year 10 | phased implementation';
+  $('dRed').value = 'No foreign military presence at or adjacent to the terminal\nNo transfer of title or freehold to any third party';
+  $('dBatna').value = 'Operate the terminal unilaterally at roughly 60 % of projected volume, financed domestically';
+  $('dBatnaVal').value = '38';
+  $('dTactics').value = 'anchoring | opening round\nprincipled-appeal | whenever sovereignty is questioned\ndeadline-pressure | after round 6 with no movement\nlog-rolling | once the tariff schedule is on the table';
+  buildDelegation();
+});
+
+/* ═══════════════ SESSION / BAKE-OFF ═══════════════ */
+var PARTY_SEED = [
+  { twin: 'diplomacy-team-us', display: 'United States', participant: 'twin', provider: '', model: '', fallback: '', maxTok: '' },
+  { twin: 'diplomacy-team-iran', display: 'Islamic Republic of Iran', participant: 'twin', provider: '', model: '', fallback: '', maxTok: '' }
+];
+var parties = PARTY_SEED.map(function (p) { return JSON.parse(JSON.stringify(p)); });
+
+function renderParties() {
+  var tb = qs('#partyTable tbody');
+  if (!tb) return;
+  tb.innerHTML = parties.map(function (p, i) {
+    function inp(k, ph, w) {
+      return '<input data-i="' + i + '" data-k="' + k + '" value="' + esc(p[k]) + '" placeholder="' + esc(ph) +
+        '" style="min-width:' + (w || 120) + 'px" />';
+    }
+    return '<tr>' +
+      '<td>' + inp('twin', 'diplomacy-team-…', 160) + '</td>' +
+      '<td>' + inp('display', 'Display name', 130) + '</td>' +
+      '<td><select data-i="' + i + '" data-k="participant">' +
+        ['twin', 'human'].map(function (o) { return '<option' + (p.participant === o ? ' selected' : '') + '>' + o + '</option>'; }).join('') +
+      '</select></td>' +
+      '<td>' + inp('provider', 'inherit', 100) + '</td>' +
+      '<td>' + inp('model', 'inherit', 150) + '</td>' +
+      '<td>' + inp('fallback', 'recommended', 150) + '</td>' +
+      '<td>' + inp('maxTok', 'by class', 80) + '</td>' +
+      '<td><button class="sm danger" data-del="' + i + '">&times;</button></td></tr>';
+  }).join('');
+  qa('#partyTable input, #partyTable select').forEach(function (n) {
+    n.addEventListener('input', function () { parties[+n.dataset.i][n.dataset.k] = n.value; });
+    n.addEventListener('change', function () { parties[+n.dataset.i][n.dataset.k] = n.value; });
+  });
+  qa('#partyTable button[data-del]').forEach(function (b) {
+    b.addEventListener('click', function () { parties.splice(+b.dataset.del, 1); renderParties(); });
+  });
+}
+bind('btnAddParty', function () {
+  parties.push({ twin: '', display: '', participant: 'twin', provider: '', model: '', fallback: '', maxTok: '' });
+  renderParties();
+});
+
+function buildSessionPayload() {
+  var payload = {
+    title: $('sTitle').value.trim() || 'Untitled session',
+    description: $('sDesc').value.trim(),
+    mode: $('sMode').value,
+    parties: parties.filter(function (p) { return p.twin; }).map(function (p) {
+      var o = { teamTwinName: p.twin, displayName: p.display || p.twin, participant: p.participant || 'twin' };
+      if (p.provider) o.provider = p.provider;
+      if (p.model) o.modelOverride = p.model;
+      if (p.fallback) o.fallbackModel = p.fallback;
+      if (p.maxTok) o.maxInputTokens = Number(p.maxTok);
+      return o;
+    }),
+    rules: {
+      maxRounds: Number($('sRounds').value) || 10,
+      autoAdvance: false,
+      procedureStyle: $('sProcedure').value,
+      sidebarsAllowed: $('sSidebars').checked,
+      sidebarDisclosure: $('sSidebars').checked ? 'partial' : 'none',
+      caucusReportBack: $('sReportBack').checked,
+      rightOfReply: $('sReply').checked,
+      chairCanSilence: $('sSilence').checked,
+      coalitionsVisible: $('sCoalitions').checked
+    }
+  };
+  if ($('sScenario').value.trim()) payload.scenarioId = $('sScenario').value.trim();
+  if ($('sOpener').value.trim()) payload.openerPartyTwin = $('sOpener').value.trim();
+  if ($('sRotate').checked) payload.rotateOpener = true;
+  var warn = [];
+  if (payload.parties.length < 2) warn.push('At least two parties are required.');
+  payload.parties.forEach(function (p) {
+    if (p.modelOverride && !p.fallbackModel) warn.push(p.teamTwinName + ': model override without a fallback — a single failure will produce placeholder moves.');
+  });
+  if (payload.rules.maxRounds < 6) warn.push('Fewer than 6 rounds rarely gets past anchoring.');
+  if (payload.rules.maxRounds > 14) warn.push('More than 14 rounds tends to produce loops on small models.');
+  var txt = JSON.stringify(payload, null, 2);
+  $('sessionOut').textContent = txt + (warn.length ? '\n\n/* Review:\n   - ' + warn.join('\n   - ') + '\n*/' : '');
+  return payload;
+}
+bind('btnBuildSession', buildSessionPayload);
+bind('btnCopySession', function (e) { copyText($('sessionOut').textContent, e.target); });
+
+var runState = { stop: false, t0: 0, results: [] };
+
+bind('btnCreateSession', function () {
+  var payload = buildSessionPayload();
+  if (payload.parties.length < 2) { log('runLog', 'Need at least two parties.', 'bad'); return; }
+  log('runLog', 'POST /diplomacy-table/sessions');
+  req('/diplomacy-table/sessions', { method: 'POST', body: payload, timeout: 20000 }).then(function (r) {
+    var id = (r.session && r.session.id) || r.id || r.sessionId;
+    $('runSessionId').value = id || '';
+    log('runLog', 'created session ' + id, 'ok');
+  }).catch(function (e) { log('runLog', 'create failed — ' + e.message, 'bad'); });
+});
+
+function sid() {
+  var v = $('runSessionId').value.trim();
+  if (!v) log('runLog', 'Enter a session id first.', 'warn');
+  return v;
+}
+bind('btnStartSession', function () {
+  var id = sid(); if (!id) return;
+  req('/diplomacy-table/sessions/' + encodeURIComponent(id) + '/start', { method: 'POST', body: {}, timeout: 60000 })
+    .then(function () { log('runLog', 'session started', 'ok'); })
+    .catch(function (e) { log('runLog', 'start failed — ' + e.message, 'bad'); });
+});
+function summariseTurns(r) {
+  var turns = r.turns || [];
+  var recorded = turns.filter(function (t) { return t.status === 'recorded'; }).length;
+  var errored = turns.filter(function (t) { return t.status === 'error'; }).length;
+  var skipped = turns.filter(function (t) { return t.status === 'skipped'; }).length;
+  var awaiting = turns.filter(function (t) { return t.status === 'awaiting_human'; }).length;
+  var placeholders = turns.filter(function (t) {
+    return t.fallback === 'placeholder' || (t.move && t.move.isPlaceholder);
+  }).length;
+  var retried = turns.filter(function (t) { return t.retried; }).length;
+  var fellBack = turns.filter(function (t) { return t.fallback && t.fallback !== 'placeholder'; }).length;
+  return { turns: turns.length, recorded: recorded, errored: errored, skipped: skipped,
+    awaiting: awaiting, placeholders: placeholders, retried: retried, fellBack: fellBack };
+}
+
+function oneRound(id) {
+  var t = Date.now();
+  return req('/diplomacy-table/sessions/' + encodeURIComponent(id) + '/round/next',
+    { method: 'POST', body: {}, timeout: 300000 }).then(function (r) {
+    var s = r.session || {};
+    var m = summariseTurns(r);
+    var bits = [m.recorded + ' recorded'];
+    if (m.placeholders) bits.push(m.placeholders + ' placeholder');
+    if (m.errored) bits.push(m.errored + ' error');
+    if (m.retried) bits.push(m.retried + ' retried');
+    if (m.fellBack) bits.push(m.fellBack + ' fell back');
+    if (m.skipped) bits.push(m.skipped + ' skipped');
+    if (m.awaiting) bits.push(m.awaiting + ' awaiting human');
+    log('runLog', 'round ' + (r.roundNumber !== undefined ? r.roundNumber : (s.currentRound !== undefined ? s.currentRound : '?')) +
+      ' — ' + bits.join(', ') + ' — ' + Math.round((Date.now() - t) / 1000) + 's',
+      (m.placeholders || m.errored) ? 'warn' : 'ok');
+    (r.turns || []).forEach(function (tn) {
+      if (tn.status === 'error') log('runLog', '  ' + tn.partyTwin + ': ' + (tn.error || 'unknown error'), 'bad');
+    });
+    r.__metrics = m;
+    return r;
+  });
+}
+bind('btnRound', function () {
+  var id = sid(); if (!id) return;
+  log('runLog', 'advancing one round…');
+  oneRound(id).catch(function (e) { log('runLog', 'round failed — ' + e.message, 'bad'); });
+});
+bind('btnStopRun', function () { runState.stop = true; log('runLog', 'stop requested — will halt after the current round.', 'warn'); });
+bind('btnRunToEnd', function () {
+  var id = sid(); if (!id) return;
+  runState.stop = false; runState.t0 = Date.now();
+  var cap = Number($('sRounds').value) || 10;
+  log('runLog', 'running to cap (' + cap + ' rounds). This is sequential and will take a while.');
+  (function step(n) {
+    if (runState.stop || n > cap) {
+      log('runLog', 'run halted after ' + (n - 1) + ' rounds, ' + Math.round((Date.now() - runState.t0) / 1000) + 's total',
+        runState.stop ? 'warn' : 'ok');
+      return;
+    }
+    oneRound(id).then(function (r) {
+      var s = r.session || {};
+      if (r.status === 'awaiting_human' || s.status === 'awaiting_human_input') {
+        log('runLog', 'paused at round ' + n + ' — awaiting a human move from ' +
+          (r.awaitingParty || s.awaitingParty || 'a party'), 'warn');
+        return;
+      }
+      if (s.status && /concluded|complete|closed/i.test(s.status)) {
+        log('runLog', 'session concluded at round ' + n, 'ok');
+        return;
+      }
+      var m = r.__metrics || {};
+      if (m.turns && m.errored === m.turns) {
+        log('runLog', 'every seat errored at round ' + n + ' — halting. Check the model path before continuing.', 'bad');
+        return;
+      }
+      step(n + 1);
+    }).catch(function (e) { log('runLog', 'round ' + n + ' failed — ' + e.message, 'bad'); });
+  })(1);
+});
+bind('btnConclude', function () {
+  var id = sid(); if (!id) return;
+  req('/diplomacy-table/sessions/' + encodeURIComponent(id) + '/conclude', { method: 'POST', body: {}, timeout: 120000 })
+    .then(function () { log('runLog', 'concluded', 'ok'); })
+    .catch(function (e) { log('runLog', 'conclude failed — ' + e.message, 'bad'); });
+});
+
+bind('btnMeasure', function () {
+  var id = sid(); if (!id) return;
+  var wall = runState.t0 ? Math.round((Date.now() - runState.t0) / 1000) + 's' : '—';
+  log('runLog', 'collecting metrics for ' + id);
+  Promise.all([
+    req('/diplomacy-table/sessions/' + encodeURIComponent(id)).catch(function () { return null; }),
+    req('/diplomacy-table/sessions/' + encodeURIComponent(id) + '/transcript').catch(function () { return null; }),
+    req('/diplomacy-table/sessions/' + encodeURIComponent(id) + '/tactics').catch(function () { return null; }),
+    req('/diplomacy-table/sessions/' + encodeURIComponent(id) + '/outcome?as=full').catch(function () { return null; })
+  ]).then(function (r) {
+    var sess = (r[0] && (r[0].session || r[0])) || {};
+    var moves = (r[1] && (r[1].moves || r[1].transcript)) || [];
+    var tac = (r[2] && (r[2].tactics || r[2].detections)) || [];
+    var out = (r[3] && (r[3].outcome || r[3])) || {};
+    var ph = moves.filter(function (m) { return m.isPlaceholder; }).length;
+    var sb = out.scoreboard || sess.scoreboard || [];
+    if (!Array.isArray(sb)) sb = Object.keys(sb).map(function (k) { return sb[k]; });
+    var sats = sb.map(function (p) { return p && typeof p.satisfaction === 'number' ? p.satisfaction : null; })
+      .filter(function (v) { return v !== null; });
+    var spread = sats.length ? (Math.max.apply(null, sats) - Math.min.apply(null, sats)).toFixed(2) : '—';
+    var crossed = sb.reduce(function (n, p) { return n + (Number(p && p.redLinesCrossed) || 0); }, 0);
+    var models = parties.filter(function (p) { return p.twin; })
+      .map(function (p) { return (p.twin.replace('diplomacy-team-', '')) + ':' + (p.model || 'default'); }).join(' · ');
+    var row = {
+      id: id,
+      rounds: sess.currentRound !== undefined ? sess.currentRound : (sess.round || '—'),
+      moves: moves.length,
+      tactics: tac.length,
+      placeholders: ph,
+      spread: spread,
+      crossed: crossed,
+      wall: wall,
+      models: models
+    };
+    runState.results.push(row);
+    renderResults();
+    log('runLog', 'measured — ' + row.moves + ' moves, ' + row.tactics + ' tactic detections, ' +
+      row.placeholders + ' placeholders', row.placeholders ? 'warn' : 'ok');
+  });
+});
+
+function renderResults() {
+  var tb = qs('#resultsTable tbody');
+  if (!tb) return;
+  if (!runState.results.length) { tb.innerHTML = '<tr><td colspan="9" class="hint">No runs recorded.</td></tr>'; return; }
+  tb.innerHTML = runState.results.map(function (r) {
+    return '<tr><td><code>' + esc(String(r.id).slice(0, 18)) + '</code></td><td>' + esc(r.rounds) + '</td>' +
+      '<td>' + r.moves + '</td><td>' + r.tactics + '</td>' +
+      '<td' + (r.placeholders ? ' style="color:var(--err)"' : '') + '>' + r.placeholders + '</td>' +
+      '<td>' + esc(r.spread) + '</td>' +
+      '<td' + (r.crossed ? ' style="color:var(--err)"' : '') + '>' + r.crossed + '</td>' +
+      '<td>' + esc(r.wall) + '</td><td class="hint">' + esc(r.models) + '</td></tr>';
+  }).join('');
+}
+bind('btnClearResults', function () { runState.results = []; renderResults(); });
+bind('btnExportResults', function (e) {
+  var head = ['session', 'rounds', 'moves', 'tactics', 'placeholders', 'satisfactionSpread', 'redLinesCrossed', 'wallClock', 'models'];
+  var lines = [head.join(',')].concat(runState.results.map(function (r) {
+    return [r.id, r.rounds, r.moves, r.tactics, r.placeholders, r.spread, r.crossed, r.wall, '"' + r.models + '"'].join(',');
+  }));
+  copyText(lines.join('\n'), e.target);
+  log('runLog', 'CSV copied to clipboard (' + runState.results.length + ' rows)', 'ok');
+});
+
+/* ═══════════════ PREFLIGHT ═══════════════ */
+function renderPreflight() {
+  var box = $('preflight');
+  if (!box) return;
+  box.innerHTML = PREFLIGHT.map(function (p, i) {
+    return '<label class="chk" id="pf-' + p[0] + '"><input type="checkbox" data-k="pf-' + i + '" />' +
+      '<span>' + p[1] + ' <span class="tag ' + (p[2] === 'auto' ? 'info' : '') + '">' + p[2] + '</span>' +
+      '<span class="pf-res hint" style="margin-left:8px"></span></span></label>';
+  }).join('');
+  qa('input[type=checkbox]', box).forEach(function (cb) {
+    cb.checked = lsGet('dtsf.chk.' + cb.dataset.k) === '1';
+    cb.addEventListener('change', function () {
+      lsSet('dtsf.chk.' + cb.dataset.k, cb.checked ? '1' : '0');
+      checklistScore('preflight', 'preflightScore', 'checks passed');
+    });
+  });
+  checklistScore('preflight', 'preflightScore', 'checks passed');
+}
+function pfMark(key, ok, note) {
+  var row = $('pf-' + key);
+  if (!row) return;
+  var cb = qs('input', row), res = qs('.pf-res', row);
+  if (cb) { cb.checked = !!ok; lsSet('dtsf.chk.' + cb.dataset.k, ok ? '1' : '0'); }
+  if (res) { res.textContent = note || ''; res.style.color = ok ? 'var(--success)' : 'var(--err)'; }
+  log('preflightLog', key + ': ' + (ok ? 'PASS' : 'FAIL') + (note ? ' — ' + note : ''), ok ? 'ok' : 'bad');
+  checklistScore('preflight', 'preflightScore', 'checks passed');
+}
+bind('btnPreflightReset', function () {
+  PREFLIGHT.forEach(function (p, i) { lsDel('dtsf.chk.pf-' + i); });
+  renderPreflight();
+  var l = $('preflightLog'); if (l) { l.dataset.fresh = '0'; l.textContent = 'Reset.'; }
+});
+bind('btnRunPreflight', function () {
+  var l = $('preflightLog'); if (l) { l.dataset.fresh = '0'; }
+  log('preflightLog', 'running automated checks against ' + (State.base || '(none)'));
+  if (!State.base) { log('preflightLog', 'no API base — connect first', 'bad'); return; }
+  req('/_health', { timeout: 12000 }).then(function (h) {
+    pfMark('health', true, 'reachable');
+    var twins = h.twins || [];
+    var teams = twins.filter(function (t) { return String(t).indexOf('diplomacy-team-') === 0; });
+    pfMark('twins', twins.indexOf('diplomacy-table') >= 0 && teams.length >= 2,
+      'table twin ' + (twins.indexOf('diplomacy-table') >= 0 ? 'present' : 'MISSING') + ', ' + teams.length + ' delegations');
+    // Auth is checked immediately after reachability because a 401 makes every
+    // check below it fail for the same single reason. Catching it here turns a
+    // wall of red into one actionable line.
+    return req('/diplomacy-table/scenarios', { timeout: 12000 }).then(function () {
+      pfMark('auth', true, State.token ? 'token accepted' : 'no token required by this instance');
+      return true;
+    }, function (e) {
+      if (e && e.status === 401) {
+        pfMark('auth', false, State.token ? 'TOKEN REJECTED — credential is wrong or rotated' : 'TOKEN REQUIRED — none supplied');
+        log('preflightLog', 'every remaining check will fail for this one reason: the credential.', 'bad');
+        log('preflightLog', 'paste the token on the Connect tab, reconnect, then re-run preflight.', 'warn');
+      } else {
+        pfMark('auth', false, (e && e.message) || 'probe failed');
+      }
+      return false;
+    });
+  }).then(function () {
+    return req('/_version', { timeout: 8000 }).catch(function () { return null; });
+  }).then(function (v) {
+    pfMark('version', !!v, v ? (v.version || v.gitSha || 'recorded') : 'no /_version endpoint');
+    return req('/ollama/_ai/providers', { timeout: 12000 }).catch(function () { return null; });
+  }).then(function (p) {
+    var list = (p && (p.providers || p.items)) || [];
+    var inline = list.filter(function (x) { return x.apiKey && !x.apiKeyEnvVar; });
+    pfMark('providers', list.length > 0 && inline.length === 0,
+      list.length + ' registered' + (inline.length ? '; ' + inline.length + ' with INLINE keys — move to env vars' : ''));
+    return req('/ollama/v1/models', { timeout: 20000 }).catch(function () { return null; });
+  }).then(function (m) {
+    var data = (m && (m.data || m.models)) || [];
+    State.models = data; renderModels();
+    var wanted = parties.filter(function (p) { return p.model; }).map(function (p) { return p.model; });
+    var ids = data.map(function (x) { return typeof x === 'string' ? x : x.id; });
+    var missing = wanted.filter(function (w) { return ids.indexOf(w) < 0; });
+    pfMark('models', data.length > 0 && missing.length === 0,
+      data.length + ' in catalog' + (missing.length ? '; MISSING: ' + missing.join(', ') : ''));
+    return req('/diplomacy-table/scenarios', { timeout: 15000 }).catch(function () { return null; });
+  }).then(function (s) {
+    var list = (s && (s.scenarios || s.items)) || [];
+    State.scenarios = list; renderScenarios();
+    var want = $('sScenario') ? $('sScenario').value.trim() : '';
+    var ok = list.length > 0 && (!want || list.some(function (x) { return x.id === want; }));
+    pfMark('scenario', ok, list.length + ' loaded' + (want ? (ok ? '; "' + want + '" present' : '; "' + want + '" NOT FOUND') : ''));
+    return req('/diplomacy-table/diagnostics/degraded', { timeout: 12000 }).catch(function () { return null; });
+  }).then(function (d) {
+    var list = (d && (d.degraded || d.parties)) || [];
+    pfMark('degraded', list.length === 0, list.length === 0 ? 'clean' : list.length + ' degraded parties');
+    log('preflightLog', 'automated checks complete. The manual items are yours.', 'ok');
+  }).catch(function (e) {
+    log('preflightLog', 'preflight aborted — ' + e.message, 'bad');
+    pfMark('health', false, e.message);
+  });
+});
+
+/* ═══════════════ BOOT ═══════════════ */
+(function boot() {
+  /* knob group filter options */
+  var groups = [];
+  KNOBS.forEach(function (k) { if (groups.indexOf(k[0]) < 0) groups.push(k[0]); });
+  var gsel = $('knobGroup');
+  if (gsel) gsel.innerHTML = '<option value="">all groups</option>' +
+    groups.map(function (g) { return '<option>' + esc(g) + '</option>'; }).join('');
+
+  renderKnobs(); renderExperiments(); renderClasses(); renderModels();
+  renderTactics(); renderLevers(); renderPhases(); renderScenarioFields();
+  renderMetrics(); renderRunsheet(); renderFailModes(); renderParties();
+  renderChecklist('qaGate', QA_GATE, 'qa', function () { checklistScore('qaGate', 'qaScore', 'gates cleared'); });
+  renderPreflight();
+
+  ['knobSearch', 'knobGroup', 'knobImpact'].forEach(function (id) {
+    var n = $(id); if (n) { n.addEventListener('input', renderKnobs); n.addEventListener('change', renderKnobs); }
+  });
+  var mf = $('modelFilter'); if (mf) mf.addEventListener('input', renderModels);
+
+  bind('btnQaReset', function () {
+    QA_GATE.forEach(function (_, i) { lsDel('dtsf.chk.qa-' + i); });
+    renderChecklist('qaGate', QA_GATE, 'qa', function () { checklistScore('qaGate', 'qaScore', 'gates cleared'); });
+  });
+  bind('btnQaPrint', function () { window.print(); });
+
+  /* connection */
+  State.base = resolveBase();
+  State.token = resolveToken();
+  if ($('apiBase')) $('apiBase').value = State.base;
+  if ($('apiToken')) $('apiToken').value = State.token;
+  if ($('chkRemember')) $('chkRemember').checked = !!lsGet(LS_BASE);
+  setOnline(false, State.base ? 'checking…' : 'no API base');
+
+  /* tab from hash */
+  var h = (window.location.hash || '').slice(1);
+  var valid = qa('nav#tabs button').map(function (b) { return b.dataset.tab; });
+  showTab(valid.indexOf(h) >= 0 ? h : 'connect');
+  window.addEventListener('hashchange', function () {
+    var n = (window.location.hash || '').slice(1);
+    if (valid.indexOf(n) >= 0) showTab(n);
+  });
+
+  if (State.base) {
+    refreshStatus().then(function () {
+      if (State.online) { loadModels(); loadScenarios(); }
+    });
+  } else {
+    log('connLog', 'No API base configured. Everything on this page works offline as reference material;');
+    log('connLog', 'set a base above to enable live status, model catalog, and the bake-off runner.');
+  }
+})();
+</script>
+
+
+</body>
+</html>
