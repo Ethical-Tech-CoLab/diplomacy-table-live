@@ -106,6 +106,13 @@
     .tactic-provenance.ok { background: #10251a; border-color: #1f5138; color: #86d8ae; }
     .tactic-provenance.pending { background: #1b1b28; border-color: #35354e; color: #9a9ab8; }
     .tactic-provenance.warn { background: #2b1a10; border-color: #5e3a1d; color: #d8a878; }
+    /* An AI detection's rationale and the quote it was checked against. The
+       quote is set apart because it is the one part a reader can verify against
+       the transcript unaided. */
+    .dt-why { color: #b9b3d6; font-size: 10px; line-height: 1.5; margin-top: 5px; }
+    .dt-quote { color: #d7cdf5; font-size: 10px; line-height: 1.5; margin-top: 5px;
+                padding-left: 7px; border-left: 2px solid #4c3a7a; font-style: italic; }
+    .dt-dispute { color: #d8a878; font-size: 9px; margin-top: 5px; text-transform: uppercase; letter-spacing: .04em; }
     .side-round-sep {
       display: flex; align-items: center; gap: 6px;
       margin: 4px 0 8px; color: var(--muted); font-size: 9px;
@@ -2079,6 +2086,18 @@ function renderTactics() {
     .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
     .map(t => {
       const ai = t.detector === 'judge-llm';
+      // An AI detection's warrant is its quote. The quote was checked against
+      // the move text before the detection was stored, so showing it lets a
+      // reader do the same check the pipeline did rather than take the label on
+      // trust — which is the difference between evidence and assertion, and the
+      // main thing this rail is for in a teaching setting.
+      const quote = ai && t.evidenceSpans && t.evidenceSpans[0] && t.evidenceSpans[0].quote;
+      const detail = ai
+        ? `${t.rationale ? `<div class="md-text dt-why">${escapeHtml(t.rationale)}</div>` : ''}`
+          + `${quote ? `<div class="md-text dt-quote">\u201c${escapeHtml(quote)}\u201d</div>` : ''}`
+          + `${t.disagreesWith && t.disagreesWith.length
+              ? `<div class="md-text dt-dispute">disputes the rule pass on this move</div>` : ''}`
+        : '';
       return `
       <div class="move-detail" style="margin: 0 14px 8px; cursor: default;${ai ? 'border-left:2px solid #7c3aed;' : ''}">
         <div class="md-head">
@@ -2086,6 +2105,7 @@ function renderTactics() {
           <span class="md-round">R${t.roundNumber}</span>
         </div>
         <div class="md-text" style="color: var(--muted); font-size: 10px;">${escapeHtml(t.partyTwin)} · <span${ai ? ' style="color:#a78bfa"' : ''}>${escapeHtml(ai ? 'AI judge' : t.detector)}</span> · conf ${(t.confidence || 0).toFixed(2)}${t.advisory ? ' · advisory' : ''}</div>
+        ${detail}
       </div>
     `;
     }).join('');

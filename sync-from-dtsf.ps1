@@ -217,6 +217,21 @@ if (Test-Path $runsDir) {
   }
 }
 
+# Confidentiality and perspective consistency across the whole runs directory.
+# Two defects reached production before this gate existed: DIPL-LEAK-002, where
+# tactics detected inside a caucus survived into the views of parties excluded
+# from it, and a set of perspective views exported from different states, where
+# a delegation's view held more analysis than the operator's. Both are
+# cross-file properties, so neither is visible to the per-file checks above.
+$auditor = Join-Path $DtsfRoot 'scripts\audit-run-confidentiality.mjs'
+if (Test-Path $auditor) {
+  $auditOut = & node $auditor $runsDir 2>&1
+  $auditOk = ($LASTEXITCODE -eq 0)
+  Check 'run confidentiality + perspective audit' $auditOk (($auditOut | Select-String -Pattern 'LEAK|STALE|FAIL') -join '; ')
+} else {
+  Check 'run confidentiality auditor is present' $false "expected $auditor"
+}
+
 Write-Host ''
 if ($fail -gt 0) { throw "$fail check(s) failed — do not publish this build." }
 

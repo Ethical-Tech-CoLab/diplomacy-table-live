@@ -1,7 +1,169 @@
 {
   "v": 1,
-  "generatedAt": "2026-08-02T18:04:39.105Z",
+  "generatedAt": "2026-08-02T19:54:14.306Z",
   "runs": [
+    {
+      "file": "hormuz-10r-judge-charlie.ndjson",
+      "slug": "hormuz-10r-judge-charlie",
+      "label": "The same 10 rounds, as the third-party broker saw them",
+      "note": "Charlie was in the caucus, so nothing is withheld - but the debrief is filtered to its own and the convener recommendations are hidden.",
+      "sessionId": "sess-1785698211325-wubfwe",
+      "title": "Iran–US Strait of Hormuz Closure Crisis (Live, April 2026) - Recorded Demonstration Run",
+      "mode": "negotiation",
+      "perspective": "diplomacy-team-charlie",
+      "sensitivity": "DELEGATION VIEW (diplomacy-team-charlie) — filtered to this party's visibility.",
+      "redactions": [
+        "context",
+        "outcome",
+        "round_summary"
+      ],
+      "withheldEntries": 0,
+      "parties": [
+        {
+          "teamTwinName": "diplomacy-team-iran",
+          "displayName": "Iran (Araghchi-led MFA + IRGC dual track)",
+          "side": "left"
+        },
+        {
+          "teamTwinName": "diplomacy-team-us",
+          "displayName": "United States (Rubio-led State + CENTCOM)",
+          "side": "right"
+        },
+        {
+          "teamTwinName": "diplomacy-team-charlie",
+          "displayName": "Charlie Industry Consortium",
+          "side": "mediator"
+        }
+      ],
+      "models": [
+        "gemma3:12b"
+      ],
+      "rounds": 10,
+      "ticks": 148,
+      "entries": 148,
+      "counts": {
+        "header": 1,
+        "context": 1,
+        "round_begin": 10,
+        "turn_begin": 30,
+        "move": 32,
+        "tactic": 52,
+        "round_end": 10,
+        "round_summary": 10,
+        "session_status": 1,
+        "outcome": 1
+      },
+      "recordedAt": "2026-08-02T19:16:51.390Z",
+      "exportedAt": "2026-08-02T19:23:33.785Z",
+      "bytes": 125265
+    },
+    {
+      "file": "hormuz-10r-judge-operator.ndjson",
+      "slug": "hormuz-10r-judge-operator",
+      "label": "Hormuz, 10 rounds, three seats - OPERATOR view (AI tactic judge)",
+      "note": "Every channel including the caucus. 39 rule detections and 13 from the AI judge; each AI detection carries a quote re-checked against the move text.",
+      "sessionId": "sess-1785698211325-wubfwe",
+      "title": "Iran–US Strait of Hormuz Closure Crisis (Live, April 2026) - Recorded Demonstration Run",
+      "mode": "negotiation",
+      "perspective": "operator",
+      "sensitivity": "OPERATOR — UNREDACTED. Contains every channel, including caucus, sidebar and advisor content.",
+      "redactions": [],
+      "withheldEntries": 0,
+      "parties": [
+        {
+          "teamTwinName": "diplomacy-team-iran",
+          "displayName": "Iran (Araghchi-led MFA + IRGC dual track)",
+          "side": "left"
+        },
+        {
+          "teamTwinName": "diplomacy-team-us",
+          "displayName": "United States (Rubio-led State + CENTCOM)",
+          "side": "right"
+        },
+        {
+          "teamTwinName": "diplomacy-team-charlie",
+          "displayName": "Charlie Industry Consortium",
+          "side": "mediator"
+        }
+      ],
+      "models": [
+        "gemma3:12b"
+      ],
+      "rounds": 10,
+      "ticks": 148,
+      "entries": 148,
+      "counts": {
+        "header": 1,
+        "context": 1,
+        "round_begin": 10,
+        "turn_begin": 30,
+        "move": 32,
+        "tactic": 52,
+        "round_end": 10,
+        "round_summary": 10,
+        "session_status": 1,
+        "outcome": 1
+      },
+      "recordedAt": "2026-08-02T19:16:51.390Z",
+      "exportedAt": "2026-08-02T19:23:31.860Z",
+      "bytes": 155781
+    },
+    {
+      "file": "hormuz-10r-judge-us.ndjson",
+      "slug": "hormuz-10r-judge-us",
+      "label": "The same 10 rounds, as the United States saw them",
+      "note": "Excluded from the Iran-Charlie caucus: 6 entries withheld - 2 private moves and the 4 tactic detections drawn from them.",
+      "sessionId": "sess-1785698211325-wubfwe",
+      "title": "Iran–US Strait of Hormuz Closure Crisis (Live, April 2026) - Recorded Demonstration Run",
+      "mode": "negotiation",
+      "perspective": "diplomacy-team-us",
+      "sensitivity": "DELEGATION VIEW (diplomacy-team-us) — filtered to this party's visibility.",
+      "redactions": [
+        "caucus",
+        "context",
+        "outcome",
+        "round_summary"
+      ],
+      "withheldEntries": 6,
+      "parties": [
+        {
+          "teamTwinName": "diplomacy-team-iran",
+          "displayName": "Iran (Araghchi-led MFA + IRGC dual track)",
+          "side": "left"
+        },
+        {
+          "teamTwinName": "diplomacy-team-us",
+          "displayName": "United States (Rubio-led State + CENTCOM)",
+          "side": "right"
+        },
+        {
+          "teamTwinName": "diplomacy-team-charlie",
+          "displayName": "Charlie Industry Consortium",
+          "side": "mediator"
+        }
+      ],
+      "models": [
+        "gemma3:12b"
+      ],
+      "rounds": 10,
+      "ticks": 148,
+      "entries": 142,
+      "counts": {
+        "header": 1,
+        "context": 1,
+        "round_begin": 10,
+        "turn_begin": 30,
+        "move": 30,
+        "tactic": 48,
+        "round_end": 10,
+        "round_summary": 10,
+        "session_status": 1,
+        "outcome": 1
+      },
+      "recordedAt": "2026-08-02T19:16:51.390Z",
+      "exportedAt": "2026-08-02T19:23:32.931Z",
+      "bytes": 123447
+    },
     {
       "file": "hormuz-broker-charlie-view.ndjson",
       "slug": "hormuz-broker-charlie-view",
@@ -39,23 +201,23 @@
         "gemma3:12b"
       ],
       "rounds": 10,
-      "ticks": 134,
-      "entries": 134,
+      "ticks": 183,
+      "entries": 150,
       "counts": {
         "header": 1,
         "context": 1,
         "round_begin": 10,
         "turn_begin": 30,
         "move": 32,
-        "tactic": 38,
+        "tactic": 54,
         "round_end": 10,
         "round_summary": 10,
         "session_status": 1,
         "outcome": 1
       },
       "recordedAt": "2026-08-02T18:03:14.914Z",
-      "exportedAt": "2026-08-02T18:04:38.682Z",
-      "bytes": 111920
+      "exportedAt": "2026-08-02T19:54:14.073Z",
+      "bytes": 129092
     },
     {
       "file": "hormuz-broker-operator.ndjson",
@@ -90,23 +252,23 @@
         "gemma3:12b"
       ],
       "rounds": 10,
-      "ticks": 134,
-      "entries": 134,
+      "ticks": 183,
+      "entries": 150,
       "counts": {
         "header": 1,
         "context": 1,
         "round_begin": 10,
         "turn_begin": 30,
         "move": 32,
-        "tactic": 38,
+        "tactic": 54,
         "round_end": 10,
         "round_summary": 10,
         "session_status": 1,
         "outcome": 1
       },
       "recordedAt": "2026-08-02T18:03:14.914Z",
-      "exportedAt": "2026-08-02T18:04:36.829Z",
-      "bytes": 143398
+      "exportedAt": "2026-08-02T19:54:12.541Z",
+      "bytes": 160271
     },
     {
       "file": "hormuz-broker-us-view.ndjson",
@@ -124,7 +286,7 @@
         "outcome",
         "round_summary"
       ],
-      "withheldEntries": 2,
+      "withheldEntries": 4,
       "parties": [
         {
           "teamTwinName": "diplomacy-team-iran",
@@ -146,23 +308,23 @@
         "gemma3:12b"
       ],
       "rounds": 10,
-      "ticks": 134,
-      "entries": 132,
+      "ticks": 183,
+      "entries": 146,
       "counts": {
         "header": 1,
         "context": 1,
         "round_begin": 10,
         "turn_begin": 30,
         "move": 30,
-        "tactic": 38,
+        "tactic": 52,
         "round_end": 10,
         "round_summary": 10,
         "session_status": 1,
         "outcome": 1
       },
       "recordedAt": "2026-08-02T18:03:14.914Z",
-      "exportedAt": "2026-08-02T18:04:37.826Z",
-      "bytes": 113384
+      "exportedAt": "2026-08-02T19:54:13.385Z",
+      "bytes": 129496
     },
     {
       "file": "supply-10round-aurora-view.ndjson",
@@ -180,7 +342,7 @@
         "outcome",
         "round_summary"
       ],
-      "withheldEntries": 2,
+      "withheldEntries": 4,
       "parties": [
         {
           "teamTwinName": "diplomacy-team-aurora",
@@ -203,22 +365,22 @@
       ],
       "rounds": 10,
       "ticks": 133,
-      "entries": 131,
+      "entries": 129,
       "counts": {
         "header": 1,
         "context": 1,
         "round_begin": 10,
         "turn_begin": 30,
         "move": 30,
-        "tactic": 37,
+        "tactic": 35,
         "round_end": 10,
         "round_summary": 10,
         "session_status": 1,
         "outcome": 1
       },
       "recordedAt": "2026-08-02T15:52:49.669Z",
-      "exportedAt": "2026-08-02T15:54:14.229Z",
-      "bytes": 87459
+      "exportedAt": "2026-08-02T19:21:40.486Z",
+      "bytes": 86391
     },
     {
       "file": "supply-10round-operator.ndjson",
@@ -475,7 +637,7 @@
         "outcome",
         "round_summary"
       ],
-      "withheldEntries": 2,
+      "withheldEntries": 4,
       "parties": [
         {
           "teamTwinName": "diplomacy-team-iran",
@@ -498,11 +660,11 @@
       ],
       "rounds": 3,
       "ticks": 42,
-      "entries": 41,
+      "entries": 39,
       "counts": {
         "header": 1,
         "move": 9,
-        "tactic": 13,
+        "tactic": 11,
         "context": 1,
         "round_begin": 3,
         "turn_begin": 6,
@@ -512,8 +674,8 @@
         "outcome": 1
       },
       "recordedAt": "2026-08-02T05:25:03.003Z",
-      "exportedAt": "2026-08-02T05:27:01.197Z",
-      "bytes": 57036
+      "exportedAt": "2026-08-02T19:21:38.993Z",
+      "bytes": 55868
     },
     {
       "file": "caucus-demo-operator.ndjson",
