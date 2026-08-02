@@ -15,6 +15,10 @@
   result — including that no secret-shaped string and no external resource
   reference has crept in, since anything here is published publicly.
 
+  It also validates `runs/` if present. Those files are not synced — DTSF's
+  scripts/export-diplomacy-run.mjs writes them here directly — but they are
+  published, so they are checked at the same gate as everything else.
+
 .PARAMETER DtsfRoot
   Path to the DTSF monorepo checkout.
 
@@ -142,11 +146,76 @@ $appTarget = Sync-Artefact -SourceName 'diplomacy-table-app.html' -TargetName 'a
     # to reach a backend that is not there. Two invariants keep it honest.
     $scripts = ([regex]::Matches($out, '(?s)<script\b[^>]*>(.*?)</script>') |
       ForEach-Object { $_.Groups[1].Value }) -join "`n"
-    $bypass = [regex]::Matches($scripts, 'fetch\(\s*(?!apiUrl\()')
-    Check 'every fetch() goes through apiUrl()' ($bypass.Count -eq 0) "$($bypass.Count) direct fetch call(s)"
+
+    # Two calls legitimately bypass apiUrl(), and both exist precisely because
+    # there is no backend: the replay log and the run manifest are static files
+    # beside this page, and apiUrl() throws in a reference-only build by design.
+    # Each is marked at the call site. Anything unmarked is a real leak, and a
+    # THIRD exemption is a decision someone must make deliberately rather than
+    # inherit from a loosened check.
+    $direct = [regex]::Matches($scripts, 'fetch\(\s*(?!apiUrl\()')
+    $unmarked = @()
+    $exempt = 0
+    foreach ($m in $direct) {
+      $from = [Math]::Max(0, $m.Index - 320)
+      if ($scripts.Substring($from, $m.Index - $from) -match 'dtsf-allow-direct-fetch') { $exempt++ }
+      else { $unmarked += $m.Index }
+    }
+    Check 'every fetch() goes through apiUrl() or is marked exempt' ($unmarked.Count -eq 0) `
+      "unmarked direct fetch at offset(s): $($unmarked -join ', ')"
+    Check 'exactly the two known offline reads are exempt' ($exempt -eq 2) "found $exempt"
+
     Check 'no window.location.origin base' (-not ($scripts -match 'BASE\s*=\s*window\.location\.origin'))
     Check 'reference-only boot guard present' ($scripts -match 'if \(!BASE\)')
+    Check 'replay gallery wired to the no-backend path' ($scripts -match 'loadRunManifest\(\)\.then')
   }
+
+# ---------------------------------------------------------------------------
+# Recorded runs (DIPL-TICK-005)
+#
+# These are not synced — `scripts/export-diplomacy-run.mjs` in DTSF writes them
+# here directly — but they ARE published, so they are checked here, at the same
+# gate as everything else. A published run is a transcript: the one thing that
+# must never be wrong about it is whose eyes it represents.
+# ---------------------------------------------------------------------------
+
+$runsDir = Join-Path $PSScriptRoot 'runs'
+if (Test-Path $runsDir) {
+  Write-Host ''
+  Write-Host 'runs/'
+
+  $manifestPath = Join-Path $runsDir 'index.json'
+  Check 'run manifest present' (Test-Path $manifestPath) 'runs/ exists but has no index.json - the gallery will not appear'
+
+  if (Test-Path $manifestPath) {
+    $manifest = Get-Content $manifestPath -Raw | ConvertFrom-Json
+    $onDisk = @(Get-ChildItem $runsDir -Filter *.ndjson | ForEach-Object { $_.Name })
+    $listed = @($manifest.runs | ForEach-Object { $_.file })
+
+    $missing = @($listed | Where-Object { $onDisk -notcontains $_ })
+    Check 'every listed run exists on disk' ($missing.Count -eq 0) "missing: $($missing -join ', ')"
+
+    $unlisted = @($onDisk | Where-Object { $listed -notcontains $_ })
+    Check 'every run on disk is listed' ($unlisted.Count -eq 0) `
+      "not in index.json (re-run export-diplomacy-run.mjs --manifest-only): $($unlisted -join ', ')"
+
+    $noPerspective = @($manifest.runs | Where-Object { -not $_.perspective -or $_.perspective -eq 'unknown' } |
+      ForEach-Object { $_.file })
+    Check 'every run declares a perspective' ($noPerspective.Count -eq 0) "undeclared: $($noPerspective -join ', ')"
+  }
+
+  foreach ($run in Get-ChildItem $runsDir -Filter *.ndjson) {
+    $raw = Get-Content $run.FullName -Raw
+    Check ("no secret-shaped strings in " + $run.Name) `
+      (-not ($raw -match '(gh[pousr]_[A-Za-z0-9]{16,}|sk-[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|xox[baprs]-)'))
+
+    $first = ($raw -split "`n" | Where-Object { $_.Trim() })[0]
+    $ok = $false
+    try { $ok = (($first | ConvertFrom-Json).kind -eq 'header') } catch { $ok = $false }
+    Check ("first line of " + $run.Name + " is the header") $ok `
+      'the player refuses a log that does not open by declaring its perspective'
+  }
+}
 
 Write-Host ''
 if ($fail -gt 0) { throw "$fail check(s) failed — do not publish this build." }

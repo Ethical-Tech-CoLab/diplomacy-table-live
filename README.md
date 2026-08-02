@@ -9,12 +9,61 @@ Tools for designing and running multi-party AI negotiation simulations. Two page
 | Page | What it is | Useful without a backend? |
 |---|---|---|
 | [`index.html`](https://ethical-tech-colab.github.io/diplomacy-table-live/) | **Configuration & Teaching Console.** Documents the knobs that change how an AI-mediated negotiation behaves, the tactics a detector can and cannot see, and the arithmetic behind whether a deal is even possible. | **Yes** — seven of ten tabs are complete offline. |
-| [`app.html`](https://ethical-tech-colab.github.io/diplomacy-table-live/app.html) | **Negotiation control surface.** Runs live sessions: rounds, caucuses, coalitions, tactic detection, debrief reports. | **No** — it is a live control surface. Without a backend it says so and tells you how to connect one. |
+| [`app.html`](https://ethical-tech-colab.github.io/diplomacy-table-live/app.html) | **Negotiation control surface.** Runs live sessions: rounds, caucuses, coalitions, tactic detection, debrief reports. | **Yes, for recorded runs** — it opens on a gallery of complete recordings that play back with no backend at all. Driving a *new* negotiation needs one. |
 
 **Neither build ships with a backend.** They are published as reference material. Point them at a
 running [DTSF](https://github.com/Ethical-Tech-CoLab) instance to enable the live behaviour.
 
 Start with the console. It is the one that teaches; the app is the one that runs.
+
+---
+
+## Recorded negotiations
+
+`app.html` opens on a gallery of complete tick-by-tick recordings of real runs. Pick one and it plays
+back in the actual negotiation room — same transcript, same channel tabs, same tactic detections,
+same failures — **with no backend, no network and nothing to time out.**
+
+That last part is the point. A live demo in front of a room depends on a server staying up, a model
+staying responsive, and a session not expiring while someone asks a question. A recording depends on
+nothing. It is also what makes a GitHub Pages deployment more than a screenshot.
+
+| Recording | What it shows |
+|---|---|
+| **Strait of Hormuz — full 4-round run** | Two AI delegations. Round 1 fails cold: both turns time out and are recorded as placeholders, then rounds 2–4 produce substantive exchanges. The failure replays *as* a failure. |
+| **Ceasefire extension — operator view** | Three seats, two AI and one human facilitator. The US and the E3 hold a caucus that Iran is not in, and this log contains it. |
+| **Ceasefire extension — as Iran saw it** | The same run, exported to the Iranian delegation's perspective. The caucus is gone. |
+
+### Reading a recording honestly
+
+Every log declares whose eyes it represents, and the app shows that in the replay chip: **red for an
+operator view** (unredacted — every channel, including caucus), **purple for a delegation view**.
+
+Two details are deliberate and worth pointing out to a class:
+
+- **The "View As" selector is locked during replay.** Perspective is decided when the log is
+  exported, not when it is read. A delegation log simply does not contain what that seat could not
+  see, so allowing the picker to move would imply you can reveal more by asking. To see another
+  seat, open that seat's recording.
+- **Tick numbers are not renumbered when material is withheld.** The gaps in the sequence *are* the
+  redaction. You can see that something was said at tick 15 without seeing what — which is a more
+  honest artefact than a transcript that quietly closes over its own omissions.
+
+### Adding or refreshing recordings
+
+Recordings are produced from a live DTSF instance and written straight into `runs/`:
+
+```powershell
+node scripts/export-diplomacy-run.mjs `
+  --session <session-id> --as operator `
+  --out C:\path\to\diplomacy-table-live\runs `
+  --label "Strait of Hormuz - full 4-round run" --note "One line for the gallery card."
+```
+
+`--as` has no default, on purpose: the difference between `operator` and a delegation name is every
+caucus in the run. The exporter scans the bytes for secret-shaped strings before writing, and always
+rebuilds `runs/index.json` by scanning the directory rather than appending to it — so the manifest
+cannot list a run that is not there. `sync-from-dtsf.ps1` re-checks all of it before publish.
 
 ---
 
@@ -89,9 +138,12 @@ The upstream artefacts live in the DTSF monorepo:
 |---|---|---|
 | `index.html` | `twins/packs/diplomacy-table/diplomacy-table-config.html` | `GET /diplomacy-table/config` |
 | `app.html` | `twins/packs/diplomacy-table/diplomacy-table-app.html` | `GET /_app/diplomacy-table` |
+| `runs/*.ndjson` | exported from a live instance via `scripts/export-diplomacy-run.mjs` | `GET /diplomacy-table/sessions/<id>/log?as=<perspective>` |
 
-`sync-from-dtsf.ps1` copies both, re-injects the one configuration line, and refuses to publish a
-build that fails any of its checks.
+`sync-from-dtsf.ps1` copies both pages, re-injects the one configuration line, and refuses to publish
+a build that fails any of its checks. It does not copy `runs/` — the exporter writes those directly —
+but it validates them at the same gate: manifest and directory must agree in both directions, every
+run must declare a perspective, and nothing may contain a secret-shaped string.
 
 Keeping each file byte-identical to upstream apart from that single line is deliberate: it means the
 console an instructor reads on Pages is provably the same page an operator sees when connected to a

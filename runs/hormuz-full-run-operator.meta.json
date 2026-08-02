@@ -1,0 +1,4 @@
+{
+  "label": "Strait of Hormuz - full 4-round run (operator view)",
+  "note": "Two AI delegations, llama3.2:1b on both seats. Round 1 fails cold - both turns time out and are recorded as placeholders - then rounds 2-4 produce substantive exchanges. The failure is replayed as a failure, not hidden."
+}

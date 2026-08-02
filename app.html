@@ -977,6 +977,15 @@ const TOKEN = resolveToken();
 // configured: on a static host that would hit the page host and fail with a
 // confusing 404 instead of an honest "not configured".
 function apiUrl(path) {
+  // In replay there is no backend by definition. This one guard covers every
+  // raw fetch that bypasses req() — telemetry, health, ollama, personas, the
+  // report generator — so none of them can quietly reach a live server and
+  // mix live data into a recorded run.
+  if (Replay.active) {
+    const err = new Error(`Offline replay — "${path}" needs a live backend.`);
+    err.replayOffline = true;
+    throw err;
+  }
   if (!BASE) throw new Error('No API base configured — this is a reference-only build. Add ?api=<your DTSF url> to connect one.');
   return BASE + path;
 }
@@ -986,6 +995,288 @@ function apiHeaders(extra) {
   if (TOKEN) h['Authorization'] = 'Bearer ' + TOKEN;
   return h;
 }
+
+// ── Offline replay (DIPL-TICK-003) ───────────────────────────────────────────
+//
+// `?log=<url>` turns this page into a player for a recorded tick log. No
+// backend, no latency, no session to time out — the whole negotiation is a
+// static file. That is what makes a large-room demo safe and what makes a
+// GitHub Pages deployment more than a screenshot.
+//
+// The design constraint that matters: **do not fork the UI.** There are exactly
+// two seams, both one line:
+//
+//   1. `req()`    — routes to `Replay.handle()` instead of the network.
+//   2. `apiUrl()` — throws for the 13 raw `fetch` calls (telemetry, health,
+//                   ollama, personas, report) that never had a live analogue
+//                   offline.
+//
+// Everything downstream is untouched. `runRound()` in particular still receives
+// a normal round response, so the existing stagger reveal, round-activity
+// panel, console rows and toasts all work as they do live, because they cannot
+// tell the difference.
+//
+// This works because the recorder writes **response-shaped payloads**
+// (DESIGN-TICKS §5.3): a `move` entry is a complete NegotiationMove, a `tactic`
+// entry a complete detection. So the player reassembles responses by filtering
+// and never re-derives scores, tactics or red lines. A client-side reducer
+// reimplementing that logic would be a second source of truth that silently
+// disagrees with the server — explicitly rejected in the design.
+const Replay = {
+  active: false,
+  url: null,
+  entries: [],
+  header: null,
+  sessionId: null,
+  // Playhead. Entries with `tick <= pos` are visible; everything after has not
+  // "happened yet". Starts at the header so the room watches the negotiation
+  // unfold rather than opening on the finished transcript.
+  pos: 0,
+  maxTick: 0,
+  loadError: null,
+
+  visible() { return this.entries.filter(e => e.tick <= this.pos); },
+  ofKind(kinds) { return this.visible().filter(e => kinds.includes(e.kind)); },
+
+  async load(url) {
+    // A log can come from two places, and they need opposite treatment:
+    // a static file next to the page (Pages, USB stick, file://) takes no
+    // credentials, while the live export endpoint may sit behind the bearer
+    // token. Attach the token only when the URL actually points at the
+    // configured API, so a token is never sent to an unrelated host.
+    const toApi = !!BASE && url.indexOf(BASE) === 0;
+    // Exempt from the apiUrl() rule (see sync-from-dtsf.ps1): a log is usually
+    // a static file beside the page, and apiUrl() throws in replay mode by
+    // design. /* dtsf-allow-direct-fetch: replay log */
+    const r = await fetch(url, toApi ? { headers: apiHeaders() } : undefined);
+    if (!r.ok) throw new Error(`${r.status} fetching log`);
+    const text = await r.text();
+    const entries = text.split('\n')
+      .map(l => l.trim())
+      .filter(Boolean)
+      .map(l => { try { return JSON.parse(l); } catch { return null; } })
+      .filter(Boolean);
+    if (!entries.length) throw new Error('log is empty or unparseable');
+    this.entries = entries.sort((a, b) => a.tick - b.tick);
+    this.header = entries.find(e => e.kind === 'header') || null;
+    if (!this.header) throw new Error('log has no header entry — refusing to replay a log that does not say whose perspective it represents');
+    this.sessionId = this.header.payload.sessionId || 'replay-session';
+    this.maxTick = this.entries[this.entries.length - 1].tick;
+    this.pos = this.header.tick;
+    this.url = url;
+    this.active = true;
+  },
+
+  // The session object the UI renders, rebuilt at the playhead. Derived from
+  // the header plus whatever round/status entries have been reached.
+  session() {
+    const h = this.header.payload;
+    const lastEnd = [...this.ofKind(['round_end'])].pop();
+    const lastBegin = [...this.ofKind(['round_begin'])].pop();
+    const lastStatus = [...this.ofKind(['status'])].pop();
+    return {
+      id: this.sessionId,
+      title: h.title || 'Recorded negotiation',
+      description: h.description || '',
+      mode: h.mode || 'negotiation',
+      parties: h.parties || [],
+      rules: h.rules || {},
+      // A recorded log is by definition a session that ran — there is no such
+      // thing as replaying an unstarted negotiation. Reporting 'created' at the
+      // header (before the first round_begin is reached) left the UI in a dead
+      // end: Next Round stays disabled, and replay's Start cannot change
+      // recorded state. Default to 'active' and let a recorded `status` entry
+      // (concluded, awaiting_human) override it when the playhead reaches one.
+      status: lastStatus ? lastStatus.payload.status : 'active',
+      currentRound: lastEnd ? lastEnd.payload.roundNumber : (lastBegin ? lastBegin.payload.roundNumber - 1 : 0),
+      awaitingParty: lastStatus ? (lastStatus.payload.awaitingParty || null) : null,
+      // A real session always carries a per-party scoreboard, zeroed at
+      // creation — renderScoreboard() maps over it unconditionally. Returning
+      // undefined before the first round_end threw during boot. Match the
+      // server's shape rather than making the renderer defensive.
+      scoreboard: (lastEnd && lastEnd.payload.scores)
+        || (h.parties || []).map(p => ({
+          teamTwinName: p.teamTwinName,
+          satisfaction: 0,
+          agreementsWon: 0,
+          redLinesCrossed: 0,
+        })),
+      createdAt: h.recordedAt || this.header.ts,
+      replay: true,
+    };
+  },
+
+  moves() {
+    return this.ofKind(['move', 'move_placeholder']).map(e =>
+      e.kind === 'move_placeholder'
+        ? Object.assign({}, e.payload, { isPlaceholder: true })
+        : e.payload);
+  },
+
+  // Turn records for one span of the log, in the shape runRound() renders.
+  turnsFrom(span) {
+    const turns = [];
+    for (const e of span) {
+      if (e.kind === 'move') {
+        turns.push({ partyTwin: e.actor, status: 'recorded', move: e.payload });
+      } else if (e.kind === 'move_placeholder') {
+        turns.push({
+          partyTwin: e.actor,
+          status: 'error',
+          error: e.payload.placeholderReason || 'no response',
+          fallback: 'placeholder',
+          move: Object.assign({}, e.payload, { isPlaceholder: true }),
+        });
+      }
+    }
+    return turns;
+  },
+
+  // Advance one round and synthesize the response `runRound()` expects, so the
+  // live code path — including the stagger reveal — runs unchanged.
+  advanceRound() {
+    const from = this.pos;
+    const nextBegin = this.entries.find(e => e.kind === 'round_begin' && e.tick > from);
+    if (!nextBegin) {
+      // Anything after the final round_end — a trailing manual move, an
+      // `outcome`, an operator note — still has to be shown. Reveal it once,
+      // then report the end of the log.
+      if (this.pos < this.maxTick) {
+        this.pos = this.maxTick;
+        const tail = this.entries.filter(e => e.tick > from);
+        return {
+          ok: true,
+          sessionId: this.sessionId,
+          roundNumber: this.session().currentRound,
+          openerThisRound: null,
+          speakingOrder: [],
+          turns: this.turnsFrom(tail),
+          session: this.session(),
+        };
+      }
+      const err = new Error('End of recorded log — no further rounds.');
+      err.replayEnd = true;
+      throw err;
+    }
+    const roundNumber = nextBegin.payload.roundNumber;
+    const end = this.entries.find(e => e.kind === 'round_end' && e.tick > nextBegin.tick);
+    const stop = end ? end.tick : this.maxTick;
+    // Span from the playhead, NOT from round_begin. Moves recorded before the
+    // round was advanced — a human seat submitted ahead of time, a caucus held
+    // between rounds — sit earlier in the log but belong to this round. Slicing
+    // at round_begin drops them silently, which is the one failure mode a
+    // transcript cannot have.
+    const span = this.entries.filter(e => e.tick > from && e.tick <= stop);
+
+    this.pos = stop;
+
+    const turns = this.turnsFrom(span);
+    const speakingOrder = end && end.payload.speakingOrder
+      ? end.payload.speakingOrder
+      : span.filter(e => e.kind === 'turn_begin').map(e => e.actor);
+
+    return {
+      ok: true,
+      sessionId: this.sessionId,
+      roundNumber,
+      openerThisRound: speakingOrder[0] || null,
+      speakingOrder,
+      turns,
+      health: end ? end.payload.health : undefined,
+      status: end ? end.payload.status : undefined,
+      session: this.session(),
+    };
+  },
+
+  readOnly(path) {
+    const err = new Error(`Replay is read-only — "${path}" needs a live backend. Remove ?log= to run a live negotiation.`);
+    err.replayReadOnly = true;
+    return err;
+  },
+
+  // The router. Mirrors the server's response envelopes exactly, because every
+  // caller downstream already knows how to unwrap them.
+  async handle(path, opts) {
+    const method = ((opts && opts.method) || 'GET').toUpperCase();
+    const [raw, qs] = path.split('?');
+    const q = new URLSearchParams(qs || '');
+    const seg = raw.split('/').filter(Boolean);
+
+    if (method === 'POST' || method === 'PATCH' || method === 'DELETE') {
+      // The one write the player can honour: advancing time.
+      if (seg[0] === 'sessions' && seg[2] === 'round' && seg[3] === 'next') return this.advanceRound();
+      if (seg[0] === 'sessions' && seg[2] === 'start') return { ok: true, session: this.session() };
+      throw this.readOnly(method + ' ' + raw);
+    }
+
+    if (raw === '/sessions') {
+      const s = this.session();
+      return { ok: true, sessions: [s], count: 1 };
+    }
+    if (seg[0] === 'sessions' && seg.length === 2) return { ok: true, session: this.session() };
+
+    if (seg[0] === 'sessions' && seg[2] === 'transcript') {
+      const channel = q.get('channel') || 'plenary';
+      const moves = this.moves().filter(m => (m.channelId || 'plenary') === channel);
+      return { ok: true, sessionId: this.sessionId, channel, moves, collapsedChannels: [] };
+    }
+    if (seg[0] === 'sessions' && seg[2] === 'tactics') {
+      return { ok: true, sessionId: this.sessionId, tactics: this.ofKind(['tactic']).map(e => e.payload) };
+    }
+    if (seg[0] === 'sessions' && seg[2] === 'channels') {
+      // Channels the log actually references. A redacted export mentions only
+      // the ones this perspective could see, which is the correct behaviour.
+      // Membership is not recorded per channel, so it is derived from who is
+      // seen speaking there — accurate for what a viewer can verify, and it
+      // cannot invent a member the log does not evidence.
+      const byChannel = new Map();
+      for (const m of this.moves()) {
+        const id = m.channelId || 'plenary';
+        if (!byChannel.has(id)) byChannel.set(id, new Set());
+        if (m.partyTwin) byChannel.get(id).add(m.partyTwin);
+      }
+      return {
+        ok: true,
+        channels: [...byChannel].map(([id, members]) => ({
+          id,
+          kind: id === 'plenary' ? 'plenary' : 'caucus',
+          members: [...members],
+          openedAt: this.header.ts,
+        })),
+      };
+    }
+    if (seg[0] === 'sessions' && seg[2] === 'coalitions') return { ok: true, coalitions: [] };
+    if (seg[0] === 'sessions' && seg[2] === 'prior-context') return { ok: true, prior: null, priorSessionId: null };
+    if (raw === '/scenarios') return { ok: true, scenarios: [] };
+
+    // Anything else was never recorded. Fail loudly rather than returning an
+    // empty shape a caller would render as real, missing data.
+    const err = new Error(`Not available in replay: ${raw}`);
+    err.replayMissing = true;
+    throw err;
+  },
+
+  chip() {
+    const el = document.createElement('div');
+    el.id = 'replay-chip';
+    el.style.cssText = 'position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:9999;'
+      + 'background:#7c3aed;color:#fff;padding:5px 14px;border-radius:999px;font:600 12px/1.4 system-ui,sans-serif;'
+      + 'box-shadow:0 2px 10px rgba(0,0,0,.35);letter-spacing:.4px;pointer-events:none;white-space:nowrap';
+    document.body.appendChild(el);
+    return el;
+  },
+
+  updateChip() {
+    const el = document.getElementById('replay-chip') || this.chip();
+    const p = this.header.payload;
+    const persp = p.perspective || 'unknown perspective';
+    const s = this.session();
+    const withheld = p.withheldEntries ? ` · ${p.withheldEntries} withheld` : '';
+    el.textContent = `▶ REPLAY · ${persp} · round ${s.currentRound} · tick ${this.pos}/${this.maxTick}${withheld}`;
+    el.style.background = persp === 'operator' ? '#b91c1c' : '#7c3aed';
+    el.title = p.sensitivity || '';
+  },
+};
 
 const ui = {
   sessions: [],
@@ -1033,6 +1324,7 @@ function toast(msg, kind) {
 
 async function req(path, opts) {
   opts = opts || {};
+  if (Replay.active) return Replay.handle(path, opts);
   const r = await fetch(apiUrl('/diplomacy-table' + path), Object.assign({}, opts, {
     headers: apiHeaders(opts.headers),
   }));
@@ -1116,6 +1408,7 @@ async function selectSession(id) {
 
 async function refreshAll() {
   if (!ui.current) return;
+  if (Replay.active) Replay.updateChip();
   const sessRes = await req('/sessions/' + ui.current);
   const sess = sessRes.session;
   ui.currentSession = sess;
@@ -1125,6 +1418,20 @@ async function refreshAll() {
   viewerSel.innerHTML = '<option value="">operator</option>' +
     sess.parties.map(p => `<option value="${escapeHtml(p.teamTwinName)}">${escapeHtml(p.displayName)}</option>`).join('');
   viewerSel.value = current;
+
+  // In replay the perspective was fixed when the log was exported — the file
+  // simply does not contain what another seat could not see. Letting the picker
+  // move would imply the viewer can reveal more by asking, which is the exact
+  // misunderstanding a redacted transcript exists to prevent. To see another
+  // seat, load that seat's log.
+  if (Replay.active) {
+    const persp = Replay.header.payload.perspective;
+    viewerSel.value = persp === 'operator' ? '' : persp;
+    ui.viewer = viewerSel.value;
+    viewerSel.disabled = true;
+    viewerSel.title = 'Fixed by this recording. Perspective is decided at export time — '
+      + 'load a different recording to see another seat.';
+  }
 
   const asParam = ui.viewer ? `&as=${encodeURIComponent(ui.viewer)}` : '';
   const tr = await req(`/sessions/${ui.current}/transcript?channel=${encodeURIComponent(ui.currentChannel)}${asParam}`);
@@ -1384,10 +1691,17 @@ function renderSidePanels(sess, tr) {
 function renderPartySide(bodyId, party, sess, tr, canSee) {
   const el = document.getElementById(bodyId);
   if (!canSee) {
+    // In replay the instruction to "switch View As" would be a lie: the
+    // perspective is fixed at export and this file does not contain the other
+    // side's material at all. Say what is actually true.
+    const how = Replay.active
+      ? `This recording is <strong>${escapeHtml(Replay.header.payload.perspective)}</strong>'s view — `
+        + `the other side's analysis is not in the file. Open a recording exported to that perspective to see it.`
+      : `Switch <em>View As</em> to <strong>operator</strong> or <strong>${escapeHtml(party.displayName)}</strong> to view this side's analysis.`;
     el.innerHTML = `<div class="side-locked">
       <div class="lock">🔒</div>
       <div><strong>${escapeHtml(party.displayName)}</strong> private channel.</div>
-      <div>Switch <em>View As</em> to <strong>operator</strong> or <strong>${escapeHtml(party.displayName)}</strong> to view this side's analysis.</div>
+      <div>${how}</div>
     </div>`;
     return;
   }
@@ -1617,9 +1931,16 @@ async function nextRound() {
       logEvent(`Round ${res.roundNumber} complete.`);
     }
   } catch (e) {
-    toast(String(e.message || e), 'err');
-    logEvent(`Round error: ${e.message}`);
-    consoleAddClientEvent({ twin: 'diplomacy-table', method: 'POST', path: '/round/next', status: 599, duration: 0, fallback: `error: ${e.message}` });
+    // End of a recorded log is a normal stopping point, not a fault. Reporting
+    // it as an error row would make a clean replay look broken on stage.
+    if (e && e.replayEnd) {
+      toast('End of recorded log', 'info');
+      logEvent('Replay reached the end of the recorded log.');
+    } else {
+      toast(String(e.message || e), 'err');
+      logEvent(`Round error: ${e.message}`);
+      consoleAddClientEvent({ twin: 'diplomacy-table', method: 'POST', path: '/round/next', status: 599, duration: 0, fallback: `error: ${e.message}` });
+    }
   } finally {
     stopPolling();
     // Wait for stagger reveal to complete before clearing pending state.
@@ -1636,6 +1957,10 @@ async function nextRound() {
 
 function startPolling() {
   stopPolling();
+  // Polling exists to watch a server work through a round. In replay the whole
+  // round is already known the moment the playhead advances, so polling would
+  // only race the stagger reveal for no benefit.
+  if (Replay.active) return;
   ui.pollTimer = setInterval(async () => {
     try {
       const asParam = ui.viewer ? `&as=${encodeURIComponent(ui.viewer)}` : '';
@@ -4051,6 +4376,112 @@ document.getElementById('demo-tour-btn').onclick = () => {
 document.getElementById('tc-skip').onclick = stopDemoTour;
 document.getElementById('tc-next').onclick = tourSkipWait;
 
+// ───────────────────────────────────────────────────────────────────────────
+// Replay gallery (DIPL-TICK-005)
+//
+// A static build that says "there is no backend" is a dead end. If recorded
+// runs are published beside the page, the honest default is to offer them:
+// the app then works on GitHub Pages, on a USB stick, and on a conference
+// laptop with no network, all identically.
+//
+// The manifest is deliberately optional. Its absence is not an error — it
+// means this build ships no recordings — so a failed fetch falls through to
+// the banner without a console error.
+// ───────────────────────────────────────────────────────────────────────────
+
+// Relative to the page, not to BASE: these files travel with the HTML.
+const RUNS_MANIFEST = 'runs/index.json';
+
+async function loadRunManifest() {
+  try {
+    // Exempt from the apiUrl() rule (see sync-from-dtsf.ps1): this reads a
+    // static file next to the page, and in a reference-only build apiUrl()
+    // throws by design. /* dtsf-allow-direct-fetch: static run manifest */
+    const r = await fetch(RUNS_MANIFEST, { cache: 'no-cache' });
+    if (!r.ok) return null;
+    const m = await r.json();
+    return m && Array.isArray(m.runs) && m.runs.length ? m : null;
+  } catch {
+    return null;
+  }
+}
+
+function runCardHtml(run) {
+  const parties = (run.parties || []).map(p => escapeHtml(p.displayName || p.teamTwinName)).join('  vs  ');
+  const isOperator = run.perspective === 'operator';
+  const counts = run.counts || {};
+  const facts = [
+    `${run.rounds} round${run.rounds === 1 ? '' : 's'}`,
+    `${counts.move || 0} moves`,
+    `${counts.tactic || 0} tactics`,
+    `${run.ticks} ticks`,
+  ];
+  if (counts.move_placeholder) facts.push(`${counts.move_placeholder} failed turn${counts.move_placeholder === 1 ? '' : 's'}`);
+  if (run.withheldEntries) facts.push(`${run.withheldEntries} withheld`);
+
+  return '<a class="run-card" href="?log=' + encodeURIComponent('runs/' + run.file) + '">'
+    + '<div class="run-card-top">'
+    + '<span class="run-persp ' + (isOperator ? 'op' : 'del') + '">'
+    + (isOperator ? 'OPERATOR VIEW' : escapeHtml(run.perspective))
+    + '</span>'
+    + (run.models && run.models.length
+      ? '<span class="run-model">' + escapeHtml(run.models.join(' · ')) + '</span>'
+      : '')
+    + '</div>'
+    + '<div class="run-title">' + escapeHtml(run.label || run.title || run.slug) + '</div>'
+    + (parties ? '<div class="run-parties">' + parties + '</div>' : '')
+    + (run.note ? '<div class="run-note">' + escapeHtml(run.note) + '</div>' : '')
+    + '<div class="run-facts">' + facts.map(f => '<span>' + escapeHtml(f) + '</span>').join('') + '</div>'
+    + '</a>';
+}
+
+function showReplayGallery(manifest) {
+  const style = document.createElement('style');
+  style.textContent = `
+    #replay-gallery { position:fixed; inset:0; z-index:400; overflow:auto;
+      background:#0d1117; color:#e6edf3; font-family:inherit; padding:48px 24px 64px; }
+    #replay-gallery .rg-inner { max-width:960px; margin:0 auto; }
+    #replay-gallery h1 { font-size:22px; margin:0 0 6px; letter-spacing:.2px; }
+    #replay-gallery .rg-sub { color:#8b949e; font-size:13px; line-height:1.6; margin:0 0 28px; }
+    #replay-gallery .rg-sub code { background:#161b22; padding:1px 5px; border-radius:4px; }
+    #replay-gallery .rg-grid { display:grid; gap:14px; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); }
+    .run-card { display:block; text-decoration:none; color:inherit; background:#161b22;
+      border:1px solid #30363d; border-radius:10px; padding:16px 16px 14px; transition:border-color .12s, transform .12s; }
+    .run-card:hover { border-color:#7c3aed; transform:translateY(-1px); }
+    .run-card-top { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:9px; }
+    .run-persp { font:600 10px/1 system-ui,sans-serif; letter-spacing:.7px; padding:4px 7px; border-radius:4px; }
+    .run-persp.op { background:#b91c1c; color:#fff; }
+    .run-persp.del { background:#7c3aed; color:#fff; }
+    .run-model { font-size:10.5px; color:#8b949e; font-family:ui-monospace,monospace; }
+    .run-title { font-size:14.5px; font-weight:600; line-height:1.35; margin-bottom:5px; }
+    .run-parties { font-size:12px; color:#8b949e; margin-bottom:7px; }
+    .run-note { font-size:12px; color:#a5b4c4; line-height:1.5; margin-bottom:9px; }
+    .run-facts { display:flex; flex-wrap:wrap; gap:6px; }
+    .run-facts span { font-size:10.5px; color:#8b949e; background:#0d1117;
+      border:1px solid #30363d; border-radius:999px; padding:2px 8px; }
+    #replay-gallery .rg-foot { margin-top:30px; font-size:12px; color:#6e7681; line-height:1.7; }
+    #replay-gallery .rg-foot a { color:#ffd479; }
+  `;
+  document.head.appendChild(style);
+
+  const el = document.createElement('div');
+  el.id = 'replay-gallery';
+  el.innerHTML = '<div class="rg-inner">'
+    + '<h1>Recorded negotiations</h1>'
+    + '<p class="rg-sub">These are complete tick-by-tick recordings of real runs. '
+    + 'They play back in this app with <strong>no backend, no network and nothing to time out</strong> — '
+    + 'every move, tactic detection and failed turn is replayed exactly as it happened.<br>'
+    + 'To drive a live negotiation instead, append <code>?api=https://your-dtsf-host</code> to this URL.</p>'
+    + '<div class="rg-grid">' + manifest.runs.map(runCardHtml).join('') + '</div>'
+    + '<p class="rg-foot">'
+    + 'A run marked <strong>OPERATOR VIEW</strong> is unredacted: it contains every channel, including any caucus. '
+    + 'A run marked with a delegation name shows only what that delegation could see — '
+    + 'the tick numbers are left unrenumbered, so the gaps are the withheld material.<br>'
+    + 'Also here: the <a href="./">Configuration &amp; Teaching Console</a>, which is designed to be useful offline.'
+    + '</p></div>';
+  document.body.appendChild(el);
+}
+
 // On a static host with no backend configured, the live boot calls below would
 // each throw from apiUrl(). Rather than let the page die on load, say so
 // plainly and skip them. The app is a live control surface — unlike the
@@ -4070,8 +4501,52 @@ function showReferenceOnlyBanner() {
   document.body.appendChild(bar);
 }
 
-if (!BASE) {
-  showReferenceOnlyBanner();
+// Boot. Replay takes precedence over BASE: a recorded log is self-contained, so
+// `?log=` must work on a static host with no backend configured at all — that
+// is the entire point of the offline path.
+const REPLAY_URL = new URLSearchParams(window.location.search).get('log');
+
+async function bootReplay(url) {
+  try {
+    await Replay.load(url);
+  } catch (e) {
+    const bar = document.createElement('div');
+    bar.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:200;background:#3a1212;'
+      + 'border-top:1px solid #7a1e1e;color:#f0c9c9;font-size:12.5px;padding:10px 14px;line-height:1.5';
+    bar.innerHTML = '<strong>Could not load replay log.</strong> '
+      + escapeHtml(String(e && e.message || e))
+      + ' &mdash; check that <code>?log=</code> points at an exported NDJSON file '
+      + '(<code>GET /sessions/&lt;id&gt;/log?as=&lt;perspective&gt;</code>).';
+    document.body.appendChild(bar);
+    return;
+  }
+  Replay.updateChip();
+  await loadSessions();
+  await selectSession(Replay.sessionId);
+  Replay.updateChip();
+  logEvent(`Replay loaded — ${Replay.entries.length} entries, ${Replay.maxTick + 1} ticks. Advance Round to play.`);
+  toast('Offline replay loaded — no backend needed', 'ok');
+
+  // If this build ships a gallery, leave a way back to it. A replay that can
+  // only be left by editing the URL is a dead end in front of an audience.
+  if (await loadRunManifest()) {
+    const back = document.createElement('a');
+    back.href = window.location.pathname;
+    back.textContent = '\u2190 All recordings';
+    back.style.cssText = 'position:fixed;top:9px;left:14px;z-index:9999;color:#c4b5fd;'
+      + 'font:600 11.5px/1.4 system-ui,sans-serif;text-decoration:none;background:#2b1a55;'
+      + 'border:1px solid #7c3aed;border-radius:999px;padding:4px 11px;';
+    document.body.appendChild(back);
+  }
+}
+
+if (REPLAY_URL) {
+  bootReplay(REPLAY_URL);
+} else if (!BASE) {
+  // No backend. Offer the recordings if this build ships any; fall back to the
+  // banner if it does not. The manifest's absence is a normal outcome, not a
+  // failure — a build with no runs is still a valid reference build.
+  loadRunManifest().then(m => { if (m) showReplayGallery(m); else showReferenceOnlyBanner(); });
 } else {
   loadSessions();
   loadScenariosList();
