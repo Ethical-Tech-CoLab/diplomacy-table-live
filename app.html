@@ -20,6 +20,11 @@
       --accent: #4a9eff;
       --left: #4a9eff;
       --right: #ff8c42;
+      /* DIPL-ROLE-001 — third-party seats are not a side of the dispute and must
+         not be coloured as one. A mediator rendered in the seller's orange reads
+         as the seller's ally, which is the opposite of the role. */
+      --mediator: #34d399;
+      --observer: #94a3b8;
       --human: #b57bff;
       --success: #4ade80;
       --warn: #fbbf24;
@@ -143,6 +148,32 @@
     .avatar { width: 30px; height: 30px; aspect-ratio: 1 / 1; border-radius: 50%; background: var(--panel-2); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; flex-shrink: 0; line-height: 1; }
     .move.is-left .avatar { color: var(--left); border: 2px solid var(--left); }
     .move.is-right .avatar { color: var(--right); border: 2px solid var(--right); }
+    /* Third-party seats: centred, green, and visually outside the two-sided
+       exchange. Sits after the left/right rules so it wins on specificity ties. */
+    .move.is-mediator { justify-content: center; }
+    .move.is-mediator .avatar { color: var(--mediator); border: 2px solid var(--mediator); }
+    .move.is-mediator .bubble {
+      border-color: var(--mediator); background: rgba(52, 211, 153, 0.07);
+      border-radius: 10px; max-width: 82%;
+    }
+    .move.is-mediator .byline .role-tag { color: var(--mediator); }
+    .side-badge { font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+      border-radius: 999px; padding: 1px 7px; border: 1px solid currentColor;
+    }
+    .role-tag {
+      font-size: 9.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+      color: var(--mediator); border: 1px solid currentColor; border-radius: 999px; padding: 0 5px;
+    }
+    .side-badge.left { color: var(--left); }
+    .side-badge.right { color: var(--right); }
+    .side-badge.mediator { color: var(--mediator); }
+    .side-badge.observer { color: var(--observer); }
+    .rv-withheld {
+      background: rgba(74,158,255,.07); border: 1px solid rgba(74,158,255,.35);
+      border-radius: 6px; padding: 8px 10px; font-size: 12px; line-height: 1.6; color: var(--text);
+    }
+    .rv-brief-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 18px; margin-top: 8px; font-size: 12px; }
+    @media (max-width: 700px) { .rv-brief-grid { grid-template-columns: 1fr; } }
     .bubble { max-width: 75%; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 9px 12px; cursor: pointer; transition: border-color 0.15s; }
     .bubble:hover { border-color: var(--accent); }
     .bubble.selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
@@ -1681,6 +1712,40 @@ async function refreshAll() {
   await loadDebate();
 }
 
+// DIPL-ROLE-001 — third-party seats (mediator, chair, observer) are not a side
+// of the dispute. The stream used to classify every non-left party as `is-right`,
+// so a neutral broker was painted in the opposing party's colour and read as its
+// ally. These helpers are the single source of truth for that classification.
+const THIRD_PARTY_SIDES = ['mediator', 'chair', 'convener', 'observer', 'center'];
+
+function isThirdParty(side) { return THIRD_PARTY_SIDES.includes(String(side || '')); }
+
+function partySideOf(sess, partyTwin) {
+  const p = (sess.parties || []).find(x => x.teamTwinName === partyTwin);
+  return p ? p.side : null;
+}
+
+// The CSS modifier for a move bubble.
+function moveSideClass(sess, partyTwin, leftParty) {
+  if (isThirdParty(partySideOf(sess, partyTwin))) return 'is-mediator';
+  return partyTwin === leftParty.teamTwinName ? 'is-left' : 'is-right';
+}
+
+function sideBadge(side) {
+  const s = String(side || '');
+  const cls = isThirdParty(s) ? (s === 'observer' ? 'observer' : 'mediator') : (s === 'left' ? 'left' : 'right');
+  return `<span class="side-badge ${cls}">${escapeHtml(s || 'party')}</span>`;
+}
+
+// A display name can arrive malformed (a bad import, a recorder bug) and a
+// leading space silently renders an empty avatar circle. Fall back through the
+// name, then the twin slug, then a neutral glyph.
+function avatarInitial(name, fallback) {
+  const from = String(name || '').replace(/[^\p{L}\p{N}]/gu, '')
+    || String(fallback || '').replace(/^diplomacy-team-/, '').replace(/[^\p{L}\p{N}]/gu, '');
+  return from ? from.charAt(0).toUpperCase() : '?';
+}
+
 function getPartyBySide(sess, side) {
   // Honor manual picker selection if present, else default by side= field
   const override = side === 'left' ? ui.leftPartyName : ui.rightPartyName;
@@ -1688,7 +1753,14 @@ function getPartyBySide(sess, side) {
     const found = sess.parties.find(p => p.teamTwinName === override);
     if (found) return found;
   }
-  return sess.parties.find(p => p.side === side) || (side === 'left' ? sess.parties[0] : sess.parties[sess.parties.length - 1]);
+  const exact = sess.parties.find(p => p.side === side);
+  if (exact) return exact;
+  // Fall back over *disputing* parties only. The old fallback took the last
+  // party in the roster, which on a three-seat table is the mediator — so the
+  // right-hand panel showed the broker instead of the other side.
+  const disputants = sess.parties.filter(p => !isThirdParty(p.side));
+  const pool = disputants.length ? disputants : sess.parties;
+  return side === 'left' ? pool[0] : pool[pool.length - 1];
 }
 
 function renderChannelTabs(sess) {
@@ -1796,21 +1868,24 @@ function renderStream(sess, tr) {
     const dividerHtml = (prev && prev.roundNumber !== m.roundNumber)
       ? `<div class="round-divider"><span>Round ${m.roundNumber}</span></div>`
       : '';
-    const isLeft = m.partyTwin === leftParty.teamTwinName;
     const partyInfo = sess.parties.find(p => p.teamTwinName === m.partyTwin);
     const name = partyInfo ? partyInfo.displayName : m.partyTwin;
-    const initial = name.charAt(0).toUpperCase();
+    const initial = avatarInitial(name, m.partyTwin);
+    const sideCls = moveSideClass(sess, m.partyTwin, leftParty);
+    const roleTag = isThirdParty(partyInfo && partyInfo.side)
+      ? `<span class="role-tag">${escapeHtml(partyInfo.side)}</span>` : '';
     const authorBadge = m.authoredBy === 'human'
       ? '<span class="author-badge human">👤 human</span>'
       : '<span class="author-badge twin">🤖 twin</span>';
     const sel = ui.selectedMoveId === m.id ? 'selected' : '';
     return `
       ${dividerHtml}
-      <div class="move ${isLeft ? 'is-left' : 'is-right'}" data-round="${m.roundNumber}" data-move-id="${escapeHtml(m.id)}">
+      <div class="move ${sideCls}" data-round="${m.roundNumber}" data-move-id="${escapeHtml(m.id)}">
         <div class="avatar">${escapeHtml(initial)}</div>
         <div class="bubble ${sel}" data-kind="${escapeHtml(m.kind)}" onclick="selectMove('${m.id}')">
           <div class="byline">
             <strong>${escapeHtml(name)}</strong>
+            ${roleTag}
             ${authorBadge}
             <span class="kind">${escapeHtml(m.kind)}</span>
             <span>R${m.roundNumber}</span>
@@ -1826,14 +1901,14 @@ function renderStream(sess, tr) {
     .filter(p => p.status === 'thinking' || p.status === 'queued')
     .map(p => {
       const partyInfo = sess.parties.find(x => x.teamTwinName === p.partyTwin);
-      const isLeft = p.partyTwin === leftParty.teamTwinName;
+      const sideCls = moveSideClass(sess, p.partyTwin, leftParty);
       const name = partyInfo ? partyInfo.displayName : p.partyTwin;
       const label = p.status === 'thinking'
         ? `<strong>${escapeHtml(name)}</strong> is thinking<span class="dots"></span>`
         : `<strong>${escapeHtml(name)}</strong> queued <span style="color:var(--muted); font-size:10px;">(waiting for prior speakers)</span>`;
       return `
-        <div class="move ${isLeft ? 'is-left' : 'is-right'}">
-          <div class="avatar" style="${p.status === 'queued' ? 'opacity:0.5;' : ''}">${escapeHtml(name.charAt(0).toUpperCase())}</div>
+        <div class="move ${sideCls}">
+          <div class="avatar" style="${p.status === 'queued' ? 'opacity:0.5;' : ''}">${escapeHtml(avatarInitial(name, p.partyTwin))}</div>
           <div class="pending-bubble" style="${p.status === 'queued' ? 'opacity:0.55;' : ''}">${label}</div>
         </div>
       `;
@@ -1844,10 +1919,10 @@ function renderStream(sess, tr) {
   if (ui.staggerSpeakingNow) {
     const partyInfo = sess.parties.find(x => x.teamTwinName === ui.staggerSpeakingNow);
     const name = partyInfo ? partyInfo.displayName : ui.staggerSpeakingNow;
-    const isLeft = ui.staggerSpeakingNow === leftParty.teamTwinName;
+    const sideCls = moveSideClass(sess, ui.staggerSpeakingNow, leftParty);
     staggerHtml = `
-      <div class="move ${isLeft ? 'is-left' : 'is-right'}">
-        <div class="avatar">${escapeHtml(name.charAt(0).toUpperCase())}</div>
+      <div class="move ${sideCls}">
+        <div class="avatar">${escapeHtml(avatarInitial(name, ui.staggerSpeakingNow))}</div>
         <div class="pending-bubble"><strong>${escapeHtml(name)}</strong> is typing<span class="dots"></span></div>
       </div>
     `;
@@ -2858,20 +2933,23 @@ async function openTeamProfile(twinName) {
   body.innerHTML = `<button class="tp-back" onclick="openTeamRoster()">← Roster</button><div>Loading…</div>`;
   document.getElementById('team-profile-modal').classList.add('open');
   try {
+    const grab = (path) => reqTwin(twinName, path)
+      .catch(e => ({ error: e.message, withheld: !!e.replayWithheld, missing: !!e.replayMissing }));
     const [personasR, goalsR, redlinesR, batnaR, tacticsR] = await Promise.all([
-      reqTwin(twinName, '/personas').catch(e => ({ error: e.message })),
-      reqTwin(twinName, '/goals').catch(e => ({ error: e.message })),
-      reqTwin(twinName, '/redlines').catch(e => ({ error: e.message })),
-      reqTwin(twinName, '/batna').catch(e => ({ error: e.message })),
-      reqTwin(twinName, '/tactics').catch(e => ({ error: e.message })),
+      grab('/personas'), grab('/goals'), grab('/redlines'), grab('/batna'), grab('/tactics'),
     ]);
+    const failures = [personasR, goalsR, redlinesR, batnaR, tacticsR].filter(r => r.error);
     renderTeamProfile(twinName, {
       personas: personasR.personas || [],
       goals: goalsR.goals || [],
       redLines: redlinesR.redLines || redlinesR.redlines || [],
       batna: batnaR.batna || batnaR,
       tactics: tacticsR.tactics || [],
-      errors: [personasR.error, goalsR.error, redlinesR.error, batnaR.error, tacticsR.error].filter(Boolean),
+      // A redacted export fails all five lookups for the same reason, so the
+      // reason belongs on screen once. Previously it was concatenated five times
+      // into a red error box, which read as five separate faults.
+      errors: [...new Set(failures.map(r => r.error))],
+      withheld: failures.length > 0 && failures.every(r => r.withheld),
     });
   } catch (e) {
     body.innerHTML = `<div class="tp-error">${escapeHtml(String(e.message || e))}</div>`;
@@ -2880,9 +2958,12 @@ async function openTeamProfile(twinName) {
 
 function renderTeamProfile(twinName, data) {
   const persona = data.personas[0];
-  const errors = data.errors.length
-    ? `<div class="tp-error">Some endpoints failed: ${data.errors.map(escapeHtml).join('; ')}</div>`
-    : '';
+  // Withholding is the redaction working as designed, not a fault — style it as
+  // an explanation. Only genuine failures get the error treatment.
+  const errors = !data.errors.length ? ''
+    : data.withheld
+      ? `<div class="rv-withheld" style="margin-bottom:10px;">🔒 ${data.errors.map(escapeHtml).join(' ')}</div>`
+      : `<div class="tp-error">${data.errors.length > 1 ? 'Some endpoints failed: ' : ''}${data.errors.map(escapeHtml).join('; ')}</div>`;
   // Stash persona for edit-button lookup (avoids JSON-in-onclick quoting hazards)
   window.__personaCache = window.__personaCache || {};
   if (persona) window.__personaCache[twinName] = persona;
@@ -3231,7 +3312,22 @@ async function openReview() {
     : 'operator (all)';
   document.getElementById('rv-viewer-pill').textContent = 'View As: ' + viewerLabel;
   await loadReviewData();
-  renderReview();
+  // DIPL-REVIEW-001 — open on the tab that actually has something to show.
+  // Pre-Planning is first in reading order, but for a stand-alone session it is
+  // the *emptiest* tab, so opening there made a fully-populated review look like
+  // no review at all: a reviewer clicked "Session Review" on a concluded 10-round
+  // run and got "No prior session linked."
+  selectReviewTab(bestReviewTab(ui.review.data));
+}
+
+// The most informative tab for the current data. Postmortem wins once the run
+// has debriefs, then During once rounds have completed, else Pre-Planning —
+// which is now always populated with the scenario brief.
+function bestReviewTab(data) {
+  if (!data) return 'pre';
+  if ((data.debriefs || []).length || data.convener) return 'post';
+  if ((data.roundSummaries || []).length) return 'during';
+  return 'pre';
 }
 
 function closeReview() {
@@ -3341,7 +3437,54 @@ async function loadReviewData() {
     } catch { /* tolerate gaps */ }
   }
 
+  // Pre-Planning: the mandate each delegation carried into the room. This is
+  // the material a debrief is judged against, and until DIPL-REVIEW-001 it was
+  // absent — the tab reported only whether a *prior* session was linked, which
+  // is blank for every stand-alone run.
+  data.brief = await loadPrePlanningBrief();
+
   ui.review.data = data;
+}
+
+// Scenario + per-delegation mandate, from the live twins or, in a replay, from
+// the recorded `context` entry. Every lookup is individually tolerated: a
+// delegation export legitimately withholds the other side's brief, and that is
+// worth showing as a fact about the export rather than swallowing.
+async function loadPrePlanningBrief() {
+  const sess = ui.currentSession;
+  const brief = { scenario: null, parties: [] };
+
+  if (Replay.active) {
+    const ctx = Replay.contextPayload();
+    brief.scenario = ctx.scenario || null;
+  } else if (sess.scenarioId) {
+    try {
+      const r = await req('/scenarios/' + encodeURIComponent(sess.scenarioId));
+      brief.scenario = r.scenario || r || null;
+    } catch { /* scenario may have been deleted */ }
+  }
+
+  for (const p of (sess.parties || [])) {
+    const entry = { teamTwinName: p.teamTwinName, displayName: p.displayName, side: p.side, withheld: null };
+    for (const [key, path, field] of [
+      ['personas', '/personas', 'personas'],
+      ['goals', '/goals', 'goals'],
+      ['redLines', '/redlines', 'redLines'],
+      ['batna', '/batna', 'batna'],
+      ['tactics', '/tactics', 'tactics'],
+    ]) {
+      try {
+        const r = await reqTwin(p.teamTwinName, path);
+        entry[key] = r[field];
+      } catch (e) {
+        // One reason, recorded once — not once per endpoint.
+        if (!entry.withheld) entry.withheld = e.replayWithheld ? e.message : null;
+        if (!entry.withheld && !entry.unreachable) entry.unreachable = e.message;
+      }
+    }
+    brief.parties.push(entry);
+  }
+  return brief;
 }
 
 function selectReviewTab(tab) {
@@ -3363,35 +3506,103 @@ function renderReview() {
 }
 
 function renderReviewPre(data, role) {
-  if (!data.priorSessionId) {
-    return `
-      <div class="empty">
-        No prior session linked.<br/>
-        <span style="font-size:11px; color:var(--muted);">
-          Pass <code>priorSessionId</code> on <code>POST /sessions</code> to chain a continuation convening.
-          Continuation is opt-in — leave it blank for stand-alone sessions.
-        </span>
+  const brief = data.brief || { scenario: null, parties: [] };
+  const sc = brief.scenario;
+
+  const scenarioBlock = sc ? `
+    <div class="tp-card" style="margin-bottom:12px;">
+      <div style="font-weight:600; font-size:14px;">${escapeHtml(sc.title || sc.id || 'Scenario')}</div>
+      ${sc.id ? `<div style="font-size:11px; color:var(--muted); margin-top:3px;">id: <code>${escapeHtml(sc.id)}</code></div>` : ''}
+      ${sc.summary ? `<div style="margin-top:8px; line-height:1.6;">${escapeHtml(sc.summary)}</div>` : ''}
+      ${sc.context ? `<div style="margin-top:8px; line-height:1.6; color:var(--muted);">${escapeHtml(sc.context)}</div>` : ''}
+      ${(sc.issues || []).length ? `<div style="margin-top:9px;"><strong style="font-size:11px;">Issues on the table</strong><ul style="margin:5px 0 0 16px; line-height:1.6;">${
+        sc.issues.map(i => `<li>${escapeHtml(typeof i === 'string' ? i : (i.title || i.name || i.id || ''))}</li>`).join('')
+      }</ul></div>` : ''}
+    </div>` : `
+    <div class="tp-empty" style="margin-bottom:12px;">
+      No scenario brief recorded for this session.
+      <span style="font-size:11px; color:var(--muted);">Sessions created with a <code>scenarioId</code> carry their brief into the recording.</span>
+    </div>`;
+
+  const partyBlocks = (brief.parties || []).map(p => {
+    const head = `<div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+        <span style="font-weight:600;">${escapeHtml(p.displayName || p.teamTwinName)}</span>
+        ${sideBadge(p.side)}
+      </div>`;
+    if (p.withheld) {
+      return `<div class="tp-card" style="margin-bottom:10px;">${head}
+        <div class="rv-withheld">🔒 ${escapeHtml(p.withheld)}</div></div>`;
+    }
+    if (p.unreachable && !(p.personas || []).length) {
+      return `<div class="tp-card" style="margin-bottom:10px;">${head}
+        <div class="tp-empty">No mandate available — this seat has no team-twin backing it
+        (a human-played seat), so it carries no persona, goals or red lines.</div></div>`;
+    }
+    const list = (items, fmt) => (items || []).length
+      ? `<ul style="margin:4px 0 0 16px; line-height:1.6;">${items.map(fmt).join('')}</ul>`
+      : '<div class="tp-empty" style="margin-top:4px;">none recorded</div>';
+    return `<div class="tp-card" style="margin-bottom:10px;">
+      ${head}
+      ${(p.personas || []).length ? `<div style="margin-bottom:8px;">${
+        p.personas.map(x => `<div style="line-height:1.6;"><strong>${escapeHtml(x.name || x.role || '')}</strong>${
+          x.role && x.name ? ` <span style="color:var(--muted);">· ${escapeHtml(x.role)}</span>` : ''}${
+          x.background || x.bio ? `<div style="color:var(--muted); font-size:12px;">${escapeHtml(x.background || x.bio)}</div>` : ''}</div>`).join('')
+      }</div>` : ''}
+      <div class="rv-brief-grid">
+        <div><strong style="font-size:11px;">Goals (${(p.goals || []).length})</strong>
+          ${list(p.goals, g => `<li>${escapeHtml(g.title || g.description || g.id || '')}${
+            g.priority ? ` <span style="color:var(--muted);">· ${escapeHtml(g.priority)}</span>` : ''}</li>`)}</div>
+        <div><strong style="font-size:11px;">Red lines (${(p.redLines || []).length})</strong>
+          ${list(p.redLines, r => `<li>${escapeHtml(r.description || r.title || r.id || '')}</li>`)}</div>
+        <div><strong style="font-size:11px;">Tactics authorised (${(p.tactics || []).length})</strong>
+          ${list(p.tactics, t => `<li>${escapeHtml(t.name || t.title || t.id || '')}</li>`)}</div>
+        <div><strong style="font-size:11px;">BATNA</strong>
+          ${p.batna
+            ? `<div style="margin-top:4px; line-height:1.6;">${escapeHtml(p.batna.description || '—')}
+               ${p.batna.estimatedValue != null ? `<div style="color:var(--muted); font-size:12px;">estimated value: ${escapeHtml(String(p.batna.estimatedValue))}</div>` : ''}</div>`
+            : '<div class="tp-empty" style="margin-top:4px;">none recorded</div>'}</div>
       </div>
+    </div>`;
+  }).join('');
+
+  // Prior-session linkage is a genuine but secondary part of pre-planning: it
+  // only exists for a continuation convening. It goes last so a stand-alone
+  // session still opens on substance.
+  let priorBlock;
+  if (!data.priorSessionId) {
+    priorBlock = `<div class="tp-empty">No prior session linked — this is a stand-alone convening.
+      <span style="font-size:11px; color:var(--muted);">Pass <code>priorSessionId</code> on
+      <code>POST /sessions</code> to chain a continuation.</span></div>`;
+  } else if (!data.prior) {
+    priorBlock = `<div class="tp-empty">Prior session <code>${escapeHtml(data.priorSessionId)}</code> referenced but not found in state.</div>`;
+  } else {
+    const p = data.prior;
+    priorBlock = `
+      <div class="tp-card" style="margin-bottom:10px;">
+        <div style="font-weight:600;">${escapeHtml(p.title || p.id)}</div>
+        <div style="font-size:11px; color:var(--muted); margin-top:4px;">
+          id: <code>${escapeHtml(p.id)}</code> · status: ${escapeHtml(p.status)} · rounds played: ${p.currentRound}/${p.maxRounds}
+          ${p.concludedAt ? ' · concluded ' + escapeHtml(p.concludedAt) : ''}
+        </div>
+      </div>
+      <h5 style="margin:10px 0 6px;">Carried-in debrief${role ? ' (filtered to your role)' : 's'}</h5>
+      ${(p.debriefs || []).map(d => renderDebriefBlock(d, true)).join('') || '<div class="tp-empty">No debriefs persisted on prior session.</div>'}
+      <h5 style="margin:12px 0 6px;">Carried-in convener report</h5>
+      ${p.convener ? renderConvenerBlock(p.convener, role) : '<div class="tp-empty">No convener report on prior session.</div>'}
     `;
   }
-  if (!data.prior) {
-    return `<div class="empty">Prior session <code>${escapeHtml(data.priorSessionId)}</code> referenced but not found in state.</div>`;
-  }
-  const p = data.prior;
-  const debriefs = (p.debriefs || []).map(d => renderDebriefBlock(d, true)).join('');
-  const conv = p.convener ? renderConvenerBlock(p.convener, role) : '<div class="tp-empty">No convener report on prior session.</div>';
+
   return `
-    <div class="tp-card" style="margin-bottom:10px;">
-      <div style="font-weight:600;">${escapeHtml(p.title || p.id)}</div>
-      <div style="font-size:11px; color:var(--muted); margin-top:4px;">
-        id: <code>${escapeHtml(p.id)}</code> · status: ${escapeHtml(p.status)} · rounds played: ${p.currentRound}/${p.maxRounds}
-        ${p.concludedAt ? ' · concluded ' + escapeHtml(p.concludedAt) : ''}
-      </div>
+    <div style="font-size:11px; color:var(--muted); margin-bottom:10px; line-height:1.6;">
+      What each delegation walked in with. Debriefs in the Postmortem tab are scored against these
+      goals and red lines, so this is the baseline the run is judged on.
     </div>
-    <h4 style="margin:12px 0 6px;">Per-Party Debrief${role ? ' (filtered to your role)' : 's'}</h4>
-    ${debriefs || '<div class="tp-empty">No debriefs persisted on prior session.</div>'}
-    <h4 style="margin:14px 0 6px;">Convener Report</h4>
-    ${conv}
+    <h4 style="margin:0 0 6px;">Scenario</h4>
+    ${scenarioBlock}
+    <h4 style="margin:14px 0 6px;">Delegation mandates${role ? ' (filtered to your role)' : ''}</h4>
+    ${partyBlocks || '<div class="tp-empty">No delegations recorded.</div>'}
+    <h4 style="margin:16px 0 6px;">Prior convening</h4>
+    ${priorBlock}
   `;
 }
 
