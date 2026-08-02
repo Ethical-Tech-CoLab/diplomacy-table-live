@@ -1,7 +1,256 @@
 {
   "v": 1,
-  "generatedAt": "2026-08-02T05:27:01.847Z",
+  "generatedAt": "2026-08-02T15:56:53.226Z",
   "runs": [
+    {
+      "file": "supply-10round-aurora-view.ndjson",
+      "slug": "supply-10round-aurora-view",
+      "label": "The same 10 rounds, as Aurora saw them - caucus withheld",
+      "note": "Identical run, exported to Aurora's perspective. Borealis and Charlie caucused about Aurora after round 4; that channel and its traffic are absent here, as are the other parties' red lines, BATNA and debriefs. Tick numbers are deliberately NOT renumbered, so the gaps mark withheld material: Aurora can see that something happened without seeing what. Open this beside the operator view.",
+      "sessionId": "sess-1785685969643-papy1p",
+      "title": "Aurora-Borealis Supply Agreement - 10-Round Three-Seat Negotiation",
+      "mode": "negotiation",
+      "perspective": "diplomacy-team-aurora",
+      "sensitivity": "DELEGATION VIEW (diplomacy-team-aurora) — filtered to this party's visibility.",
+      "redactions": [
+        "caucus",
+        "context",
+        "outcome",
+        "round_summary"
+      ],
+      "withheldEntries": 2,
+      "parties": [
+        {
+          "teamTwinName": "diplomacy-team-aurora",
+          "displayName": "Aurora (Buyer)",
+          "side": "left"
+        },
+        {
+          "teamTwinName": "diplomacy-team-borealis",
+          "displayName": "Borealis (Seller)",
+          "side": "right"
+        },
+        {
+          "teamTwinName": "diplomacy-team-charlie",
+          "displayName": " charlie.Value.ToUpper() harlie",
+          "side": "mediator"
+        }
+      ],
+      "models": [
+        "gemma3:12b"
+      ],
+      "rounds": 10,
+      "ticks": 133,
+      "entries": 131,
+      "counts": {
+        "header": 1,
+        "context": 1,
+        "round_begin": 10,
+        "turn_begin": 30,
+        "move": 30,
+        "tactic": 37,
+        "round_end": 10,
+        "round_summary": 10,
+        "session_status": 1,
+        "outcome": 1
+      },
+      "recordedAt": "2026-08-02T15:52:49.669Z",
+      "exportedAt": "2026-08-02T15:54:14.229Z",
+      "bytes": 87459
+    },
+    {
+      "file": "supply-10round-operator.ndjson",
+      "slug": "supply-10round-operator",
+      "label": "Aurora-Borealis supply agreement - 10 rounds, three seats (operator view)",
+      "note": "A commercial negotiation rather than a geopolitical one: Aurora (buyer), Borealis (seller) and a Charlie industry-consortium broker, all AI on gemma3:12b. Ten healthy rounds. After round 4 Borealis and Charlie caucus privately, EXCLUDING Aurora - that private exchange is in this log. This scenario also carries priced BATNAs on both sides, which is why the ZOPA readiness panel can reason about leverage here in a way it cannot for the Iran scenarios.",
+      "sessionId": "sess-1785685969643-papy1p",
+      "title": "Aurora-Borealis Supply Agreement - 10-Round Three-Seat Negotiation",
+      "mode": "negotiation",
+      "perspective": "operator",
+      "sensitivity": "OPERATOR — UNREDACTED. Contains every channel, including caucus, sidebar and advisor content.",
+      "redactions": [],
+      "withheldEntries": 0,
+      "parties": [
+        {
+          "teamTwinName": "diplomacy-team-aurora",
+          "displayName": "Aurora (Buyer)",
+          "side": "left"
+        },
+        {
+          "teamTwinName": "diplomacy-team-borealis",
+          "displayName": "Borealis (Seller)",
+          "side": "right"
+        },
+        {
+          "teamTwinName": "diplomacy-team-charlie",
+          "displayName": " charlie.Value.ToUpper() harlie",
+          "side": "mediator"
+        }
+      ],
+      "models": [
+        "gemma3:12b"
+      ],
+      "rounds": 10,
+      "ticks": 133,
+      "entries": 133,
+      "counts": {
+        "header": 1,
+        "context": 1,
+        "round_begin": 10,
+        "turn_begin": 30,
+        "move": 32,
+        "tactic": 37,
+        "round_end": 10,
+        "round_summary": 10,
+        "session_status": 1,
+        "outcome": 1
+      },
+      "recordedAt": "2026-08-02T15:52:49.669Z",
+      "exportedAt": "2026-08-02T15:54:13.264Z",
+      "bytes": 101592
+    },
+    {
+      "file": "nuclear-10round-operator.ndjson",
+      "slug": "nuclear-10round-operator",
+      "label": "Iran-US nuclear and sanctions track - 10 rounds (operator view)",
+      "note": "A second geopolitical run on the same two delegations and the same model, on a different scenario: the nuclear and sanctions track rather than the Strait closure. Ten healthy rounds, 24 tactic detections. Recorded identically to the Hormuz run so any difference in behaviour is attributable to the scenario and the negotiation rather than to the harness.",
+      "sessionId": "sess-1785685440112-8ylygk",
+      "title": "Iran-US Nuclear and Sanctions Track - 10-Round Full Negotiation",
+      "mode": "negotiation",
+      "perspective": "operator",
+      "sensitivity": "OPERATOR — UNREDACTED. Contains every channel, including caucus, sidebar and advisor content.",
+      "redactions": [],
+      "withheldEntries": 0,
+      "parties": [
+        {
+          "teamTwinName": "diplomacy-team-iran",
+          "displayName": "Iran (MFA Delegation)",
+          "side": "left"
+        },
+        {
+          "teamTwinName": "diplomacy-team-us",
+          "displayName": "United States (State + NSC)",
+          "side": "right"
+        }
+      ],
+      "models": [
+        "gemma3:12b"
+      ],
+      "rounds": 10,
+      "ticks": 98,
+      "entries": 98,
+      "counts": {
+        "header": 1,
+        "context": 1,
+        "round_begin": 10,
+        "turn_begin": 20,
+        "move": 20,
+        "tactic": 24,
+        "round_end": 10,
+        "round_summary": 10,
+        "session_status": 1,
+        "outcome": 1
+      },
+      "recordedAt": "2026-08-02T15:44:00.140Z",
+      "exportedAt": "2026-08-02T15:54:44.675Z",
+      "bytes": 94690
+    },
+    {
+      "file": "hormuz-10round-iran-view.ndjson",
+      "slug": "hormuz-10round-iran-view",
+      "label": "Strait of Hormuz - the same 10 rounds, as Iran saw it",
+      "note": "Identical run, exported to the Iranian delegation's perspective. This is a TWO-party table, so there is no caucus to withhold - a caucus needs at least two members, and excluding one of two parties leaves one. What differs here is field-level: the opposing delegation's red lines, BATNA and debrief are scrubbed from the shared context, outcome and round summaries. Entry count is therefore identical to the operator view. For withheld ENTRIES, see the three-seat supply negotiation.",
+      "sessionId": "sess-1785685391566-l7vbcs",
+      "title": "Strait of Hormuz Closure Crisis - 10-Round Full Negotiation",
+      "mode": "negotiation",
+      "perspective": "diplomacy-team-iran",
+      "sensitivity": "DELEGATION VIEW (diplomacy-team-iran) — filtered to this party's visibility.",
+      "redactions": [
+        "context",
+        "outcome",
+        "round_summary"
+      ],
+      "withheldEntries": 0,
+      "parties": [
+        {
+          "teamTwinName": "diplomacy-team-iran",
+          "displayName": "Iran (Araghchi-led MFA + IRGC dual track)",
+          "side": "left"
+        },
+        {
+          "teamTwinName": "diplomacy-team-us",
+          "displayName": "United States (Rubio-led State + CENTCOM)",
+          "side": "right"
+        }
+      ],
+      "models": [
+        "gemma3:12b"
+      ],
+      "rounds": 10,
+      "ticks": 99,
+      "entries": 99,
+      "counts": {
+        "header": 1,
+        "context": 1,
+        "round_begin": 10,
+        "turn_begin": 20,
+        "move": 20,
+        "tactic": 25,
+        "round_end": 10,
+        "round_summary": 10,
+        "session_status": 1,
+        "outcome": 1
+      },
+      "recordedAt": "2026-08-02T15:43:11.596Z",
+      "exportedAt": "2026-08-02T15:54:43.813Z",
+      "bytes": 89876
+    },
+    {
+      "file": "hormuz-10round-operator.ndjson",
+      "slug": "hormuz-10round-operator",
+      "label": "Strait of Hormuz - full 10-round negotiation (operator view)",
+      "note": "Ten substantive rounds, two AI delegations on gemma3:12b served by the on-box GPU behind the Ethical Tech CoLab proxy. Every round healthy - no placeholders, no retries, no timeouts. Includes the full scenario brief and both delegation briefs (9 personas, 16 goals, 14 red lines, BATNA and 15 authored tactics per side), a mid-run caucus after round 4, per-round summaries and the concluding convener report.",
+      "sessionId": "sess-1785685391566-l7vbcs",
+      "title": "Strait of Hormuz Closure Crisis - 10-Round Full Negotiation",
+      "mode": "negotiation",
+      "perspective": "operator",
+      "sensitivity": "OPERATOR — UNREDACTED. Contains every channel, including caucus, sidebar and advisor content.",
+      "redactions": [],
+      "withheldEntries": 0,
+      "parties": [
+        {
+          "teamTwinName": "diplomacy-team-iran",
+          "displayName": "Iran (Araghchi-led MFA + IRGC dual track)",
+          "side": "left"
+        },
+        {
+          "teamTwinName": "diplomacy-team-us",
+          "displayName": "United States (Rubio-led State + CENTCOM)",
+          "side": "right"
+        }
+      ],
+      "models": [
+        "gemma3:12b"
+      ],
+      "rounds": 10,
+      "ticks": 99,
+      "entries": 99,
+      "counts": {
+        "header": 1,
+        "context": 1,
+        "round_begin": 10,
+        "turn_begin": 20,
+        "move": 20,
+        "tactic": 25,
+        "round_end": 10,
+        "round_summary": 10,
+        "session_status": 1,
+        "outcome": 1
+      },
+      "recordedAt": "2026-08-02T15:43:11.596Z",
+      "exportedAt": "2026-08-02T15:46:23.589Z",
+      "bytes": 107381
+    },
     {
       "file": "hormuz-full-run-operator.ndjson",
       "slug": "hormuz-full-run-operator",

@@ -1,0 +1,4 @@
+{
+  "label": "Strait of Hormuz - full 10-round negotiation (operator view)",
+  "note": "Ten substantive rounds, two AI delegations on gemma3:12b served by the on-box GPU behind the Ethical Tech CoLab proxy. Every round healthy - no placeholders, no retries, no timeouts. Includes the full scenario brief and both delegation briefs (9 personas, 16 goals, 14 red lines, BATNA and 15 authored tactics per side), a mid-run caucus after round 4, per-round summaries and the concluding convener report."
+}
