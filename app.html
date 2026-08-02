@@ -97,6 +97,10 @@
     }
     .move-detail .md-detect { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border); }
     .move-detail .md-detect-label { color: var(--muted); font-size: 9px; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+    .tactic-provenance { margin: 0 14px 10px; padding: 6px 9px; border-radius: 5px; font-size: 10px; line-height: 1.45; border: 1px solid; }
+    .tactic-provenance.ok { background: #10251a; border-color: #1f5138; color: #86d8ae; }
+    .tactic-provenance.pending { background: #1b1b28; border-color: #35354e; color: #9a9ab8; }
+    .tactic-provenance.warn { background: #2b1a10; border-color: #5e3a1d; color: #d8a878; }
     .side-round-sep {
       display: flex; align-items: center; gap: 6px;
       margin: 4px 0 8px; color: var(--muted); font-size: 9px;
@@ -1073,7 +1077,11 @@ const Replay = {
     const h = this.header.payload;
     const lastEnd = [...this.ofKind(['round_end'])].pop();
     const lastBegin = [...this.ofKind(['round_begin'])].pop();
-    const lastStatus = [...this.ofKind(['status'])].pop();
+    // The recorder writes kind 'session_status'; this looked for 'status', so
+    // the override never fired and a concluded run replayed as still active —
+    // which in turn left the Session Review's Postmortem tab permanently empty,
+    // because it keys off `status === 'concluded'`.
+    const lastStatus = [...this.ofKind(['session_status'])].pop();
     return {
       id: this.sessionId,
       title: h.title || 'Recorded negotiation',
@@ -1085,11 +1093,13 @@ const Replay = {
       // thing as replaying an unstarted negotiation. Reporting 'created' at the
       // header (before the first round_begin is reached) left the UI in a dead
       // end: Next Round stays disabled, and replay's Start cannot change
-      // recorded state. Default to 'active' and let a recorded `status` entry
-      // (concluded, awaiting_human) override it when the playhead reaches one.
+      // recorded state. Default to 'active' and let a recorded `session_status`
+      // entry (concluded, awaiting_human) override it when the playhead reaches
+      // one.
       status: lastStatus ? lastStatus.payload.status : 'active',
       currentRound: lastEnd ? lastEnd.payload.roundNumber : (lastBegin ? lastBegin.payload.roundNumber - 1 : 0),
       awaitingParty: lastStatus ? (lastStatus.payload.awaitingParty || null) : null,
+      concludedAt: (lastStatus && lastStatus.payload.concludedAt) || null,
       // A real session always carries a per-party scoreboard, zeroed at
       // creation — renderScoreboard() maps over it unconditionally. Returning
       // undefined before the first round_end threw during boot. Match the
@@ -1160,7 +1170,17 @@ const Replay = {
     }
     const roundNumber = nextBegin.payload.roundNumber;
     const end = this.entries.find(e => e.kind === 'round_end' && e.tick > nextBegin.tick);
-    const stop = end ? end.tick : this.maxTick;
+    let stop = end ? end.tick : this.maxTick;
+    // The round summary is written immediately after round_end and describes the
+    // round that just closed. Leaving it beyond the playhead would make the
+    // Session Review's "During" tab lag a round behind the transcript.
+    if (end) {
+      for (const e of this.entries) {
+        if (e.tick <= stop) continue;
+        if (e.kind === 'round_summary' && e.round === roundNumber) stop = e.tick;
+        else break;
+      }
+    }
     // Span from the playhead, NOT from round_begin. Moves recorded before the
     // round was advanced — a human seat submitted ahead of time, a caucus held
     // between rounds — sit earlier in the log but belong to this round. Slicing
@@ -1221,7 +1241,12 @@ const Replay = {
       return { ok: true, sessionId: this.sessionId, channel, moves, collapsedChannels: [] };
     }
     if (seg[0] === 'sessions' && seg[2] === 'tactics') {
-      return { ok: true, sessionId: this.sessionId, tactics: this.ofKind(['tactic']).map(e => e.payload) };
+      const tactics = this.ofKind(['tactic']).map(e => e.payload);
+      // Derived, not guessed: if the log contains a judge-llm detection then the
+      // judge demonstrably ran. If it does not, this recording cannot prove it
+      // ran, so report 'not-run' rather than implying an empty AI result.
+      const judgeStatus = tactics.some(t => t.detector === 'judge-llm') ? 'complete' : 'not-run';
+      return { ok: true, sessionId: this.sessionId, tactics, judgeStatus };
     }
     if (seg[0] === 'sessions' && seg[2] === 'channels') {
       // Channels the log actually references. A redacted export mentions only
@@ -1247,11 +1272,103 @@ const Replay = {
     }
     if (seg[0] === 'sessions' && seg[2] === 'coalitions') return { ok: true, coalitions: [] };
     if (seg[0] === 'sessions' && seg[2] === 'prior-context') return { ok: true, prior: null, priorSessionId: null };
-    if (raw === '/scenarios') return { ok: true, scenarios: [] };
+
+    // ── Session Review (DIPL-TICK-006) ───────────────────────────────────────
+    // The review tabs read three endpoints. All three are recorded now, so a
+    // replay shows the same debrief a live console did — including, for a
+    // delegation export, the fact that it only carries its own.
+    if (seg[0] === 'sessions' && seg[2] === 'outcome') {
+      const e = [...this.ofKind(['outcome'])].pop();
+      if (!e) {
+        // Not concluded, or recorded before outcomes were captured. Distinguish
+        // the two: a viewer needs to know whether the run had no postmortem or
+        // this file simply predates it.
+        return {
+          ok: true,
+          sessionId: this.sessionId,
+          status: this.session().status,
+          debriefs: [],
+          convener: null,
+          notRecorded: true,
+        };
+      }
+      return { ok: true, ...e.payload };
+    }
+    if (seg[0] === 'sessions' && seg[2] === 'round' && seg[4] === 'summary') {
+      const n = Number(seg[3]);
+      const e = [...this.ofKind(['round_summary'])].filter(x => x.payload.roundNumber === n).pop();
+      if (!e) {
+        const err = new Error(`No round summary recorded for round ${n}`);
+        err.replayMissing = true;
+        throw err;
+      }
+      return { ok: true, ...e.payload };
+    }
+
+    // ── Scenario (DIPL-TICK-006) ─────────────────────────────────────────────
+    // Recorded once in the `context` entry. Returning [] here used to make the
+    // scenario picker look like a backend with no scenarios in it.
+    if (raw === '/scenarios') {
+      const sc = this.contextPayload().scenario;
+      return { ok: true, scenarios: sc ? [sc] : [] };
+    }
+    if (seg[0] === 'scenarios' && seg.length === 2) {
+      const sc = this.contextPayload().scenario;
+      if (sc && sc.id === decodeURIComponent(seg[1])) return { ok: true, scenario: sc };
+      const err = new Error(`Scenario ${seg[1]} is not in this recording`);
+      err.replayMissing = true;
+      throw err;
+    }
 
     // Anything else was never recorded. Fail loudly rather than returning an
     // empty shape a caller would render as real, missing data.
     const err = new Error(`Not available in replay: ${raw}`);
+    err.replayMissing = true;
+    throw err;
+  },
+
+  /** Whether another recorded round begins beyond the playhead. */
+  moreRounds() {
+    return this.entries.some(e => e.kind === 'round_begin' && e.tick > this.pos);
+  },
+
+  /** The recorded run context, or an empty shell for logs predating it. */
+  contextPayload() {
+    const e = this.entries.find(x => x.kind === 'context');
+    return (e && e.payload) || { scenario: null, parties: [] };
+  },
+
+  /**
+   * The `reqTwin()` seam — team-twin reference data (persona, goals, red lines,
+   * BATNA, tactics) served from the recorded `context` entry.
+   *
+   * This is reference material, not an event, so it is answered from the whole
+   * log rather than from the playhead: a delegation's mandate did not "happen"
+   * at a tick, it was true for the entire run. Gating it on the playhead would
+   * make the roster mysteriously empty at the start of a replay.
+   */
+  handleTwin(twinName, path) {
+    const ctx = this.contextPayload();
+    const party = (ctx.parties || []).find(p => p.teamTwinName === twinName);
+    if (!party) {
+      const err = new Error(`No recorded profile for ${twinName}`);
+      err.replayMissing = true;
+      throw err;
+    }
+    if (party.withheld) {
+      const err = new Error(
+        `${party.displayName || twinName}'s mandate is not in this recording — it was exported to `
+        + `${this.header.payload.perspective}'s perspective, and a delegation's goals and red lines are `
+        + `exactly what the other side does not get to see.`);
+      err.replayWithheld = true;
+      throw err;
+    }
+    if (path === '/personas') return { ok: true, personas: party.personas || [] };
+    if (path === '/goals') return { ok: true, goals: party.goals || [] };
+    if (path === '/redlines') return { ok: true, redLines: party.redLines || [] };
+    if (path === '/batna') return { ok: true, batna: party.batna || null };
+    if (path === '/tactics') return { ok: true, tactics: party.tactics || [] };
+    const err = new Error(`Not available in replay: ${twinName}${path}`);
     err.replayMissing = true;
     throw err;
   },
@@ -1261,18 +1378,45 @@ const Replay = {
     el.id = 'replay-chip';
     el.style.cssText = 'position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:9999;'
       + 'background:#7c3aed;color:#fff;padding:5px 14px;border-radius:999px;font:600 12px/1.4 system-ui,sans-serif;'
-      + 'box-shadow:0 2px 10px rgba(0,0,0,.35);letter-spacing:.4px;pointer-events:none;white-space:nowrap';
+      + 'box-shadow:0 2px 10px rgba(0,0,0,.35);letter-spacing:.4px;white-space:nowrap;'
+      + 'display:flex;align-items:center;gap:10px';
+    // Pointer events are enabled on the chip so the speed control works, but the
+    // label itself stays inert so it never eats a click meant for the page.
+    const label = document.createElement('span');
+    label.id = 'replay-chip-label';
+    label.style.cssText = 'pointer-events:none';
+    el.appendChild(label);
+
+    const sel = document.createElement('select');
+    sel.id = 'replay-speed';
+    sel.title = 'Playback speed — how long each message stays on screen before the next.\n'
+      + 'This does not change the recording: every speed replays exactly the same ticks.';
+    sel.style.cssText = 'background:rgba(0,0,0,.28);color:#fff;border:1px solid rgba(255,255,255,.35);'
+      + 'border-radius:999px;font:600 11px system-ui,sans-serif;padding:1px 4px;cursor:pointer';
+    for (const c of PACE.choices) {
+      const o = document.createElement('option');
+      o.value = String(c);
+      o.textContent = c + '\u00d7';
+      o.style.color = '#111';
+      sel.appendChild(o);
+    }
+    sel.value = String(PACE.speed);
+    sel.addEventListener('change', e => setPlaybackSpeed(e.target.value));
+    el.appendChild(sel);
+
     document.body.appendChild(el);
     return el;
   },
 
   updateChip() {
-    const el = document.getElementById('replay-chip') || this.chip();
+    if (!document.getElementById('replay-chip')) this.chip();
+    const el = document.getElementById('replay-chip');
+    const label = document.getElementById('replay-chip-label');
     const p = this.header.payload;
     const persp = p.perspective || 'unknown perspective';
     const s = this.session();
     const withheld = p.withheldEntries ? ` · ${p.withheldEntries} withheld` : '';
-    el.textContent = `▶ REPLAY · ${persp} · round ${s.currentRound} · tick ${this.pos}/${this.maxTick}${withheld}`;
+    label.textContent = `▶ REPLAY · ${persp} · round ${s.currentRound} · tick ${this.pos}/${this.maxTick}${withheld}`;
     el.style.background = persp === 'operator' ? '#b91c1c' : '#7c3aed';
     el.title = p.sensitivity || '';
   },
@@ -1284,6 +1428,11 @@ const ui = {
   currentSession: null,
   viewer: '',
   tactics: [],
+  // Whether the async AI judge has run over this session's moves. The API has
+  // always reported it; nothing displayed it, so a viewer could not tell
+  // "the AI looked and found nothing" from "the AI never looked" — which is the
+  // difference between a finding and an absence of evidence.
+  judgeStatus: null,
   selectedMoveId: null,
   pendingTurns: [],
   pollTimer: null,
@@ -1306,6 +1455,50 @@ const ui = {
   staggerSpeakingNow: null,   // partyTwin currently being "typed" — drives the typing indicator
 };
 const STAGGER_DELAY_MS = 1500; // gap between party reveals
+
+// ── Playback pacing (DIPL-TICK-006) ──────────────────────────────────────────
+//
+// Two different clocks, and conflating them is the mistake to avoid:
+//
+//   • **Tick rate** — which entries are revealed. Fixed by the log. A round
+//     advance always reveals exactly the same span, at any speed.
+//   • **Visual pace** — how long a reader gets to look at a move before the next
+//     one lands. That is what this controls, and it is a presentation choice.
+//
+// Live mode is deliberately untouched: there the tempo is the server actually
+// thinking, which is the honest thing to show. Replay has no such tempo, so the
+// old fixed 1.5 s gap meant a 45-word proposal and a one-line placeholder each
+// got 1.5 s — far too fast to read either from the back of a room.
+//
+// Pace is proportional to how much there is to read, clamped at both ends so a
+// terse move still registers and a long one does not stall the room. Recorded
+// `ts` gaps are deliberately NOT used: they measure how long the model took,
+// which has nothing to do with how long the text takes to read, and they would
+// give the fastest model the least readable playback. Model latency is worth
+// showing — as a label, not as dead air.
+const PACE = {
+  baseMs: 1100,        // time to notice something new appeared
+  perWordMs: 190,      // ≈315 wpm — brisk, assumes a presenter is also talking
+  minMs: 2000,
+  maxMs: 7000,
+  speed: 1,            // presenter multiplier; higher = faster
+  choices: [0.5, 0.75, 1, 1.5, 2, 4],
+};
+
+function paceForText(text) {
+  if (!Replay.active) return STAGGER_DELAY_MS;
+  const words = String(text || '').trim().split(/\s+/).filter(Boolean).length;
+  const raw = PACE.baseMs + words * PACE.perWordMs;
+  const clamped = Math.max(PACE.minMs, Math.min(PACE.maxMs, raw));
+  return Math.round(clamped / PACE.speed);
+}
+
+function setPlaybackSpeed(v) {
+  PACE.speed = Number(v) || 1;
+  try { localStorage.setItem('dtsf.replaySpeed', String(PACE.speed)); } catch { /* private mode */ }
+  const el = document.getElementById('replay-speed');
+  if (el) el.value = String(PACE.speed);
+}
 
 function logEvent(msg) {
   const ts = new Date().toLocaleTimeString();
@@ -1439,6 +1632,7 @@ async function refreshAll() {
   const channelsRes = await req(`/sessions/${ui.current}/channels${ui.viewer ? '?as=' + encodeURIComponent(ui.viewer) : ''}`);
   const coalitionsRes = await req(`/sessions/${ui.current}/coalitions${ui.viewer ? '?as=' + encodeURIComponent(ui.viewer) : ''}`);
   ui.tactics = tacticsRes.tactics || [];
+  ui.judgeStatus = tacticsRes.judgeStatus || null;
   ui.channels = channelsRes.channels || [];
   ui.coalitions = coalitionsRes.coalitions || [];
   ui.lastTranscript = tr;
@@ -1455,7 +1649,18 @@ async function refreshAll() {
   document.getElementById('round-label').textContent = `Round ${sess.currentRound} / ${sess.rules.maxRounds}`;
 
   document.getElementById('start-btn').disabled = sess.status !== 'setup';
-  document.getElementById('round-btn').disabled = (sess.status !== 'active' && sess.status !== 'awaiting_human_input') || sess.currentRound >= sess.rules.maxRounds;
+  // In replay the gate is the log, not the round count. A recorded run's closing
+  // — the concluded status and the outcome — is written *after* the final
+  // round_end, so disabling at `currentRound >= maxRounds` (correct live, where
+  // there is genuinely no round N+1) left the last ticks unreachable and the
+  // Postmortem tab permanently empty. The playhead is the honest gate offline.
+  if (Replay.active) {
+    const btn = document.getElementById('round-btn');
+    btn.disabled = Replay.pos >= Replay.maxTick;
+    btn.textContent = Replay.moreRounds() ? '\u23ed Next Round' : '\u23ed Show Closing';
+  } else {
+    document.getElementById('round-btn').disabled = (sess.status !== 'active' && sess.status !== 'awaiting_human_input') || sess.currentRound >= sess.rules.maxRounds;
+  }
   document.getElementById('move-btn').disabled = sess.status !== 'active';
   document.getElementById('conclude-btn').disabled = sess.status === 'concluded';
   // DIPL-DEBRIEF-003 — Session Review unlocks once any session is loaded.
@@ -1765,22 +1970,50 @@ function renderScoreboard(sess) {
 
 function renderTactics() {
   const el = document.getElementById('tactics-list');
+  // Provenance banner. Every detection currently in this rail comes from the
+  // deterministic rule pass; the AI judge (DIPL-LEDGER-002) is a separate,
+  // asynchronous second opinion. Saying which passes have run — and which have
+  // not — is the difference between "no tactics were used" and "nothing has
+  // looked for them yet", and a teaching tool must not blur the two.
+  const js = ui.judgeStatus;
+  const banner = (() => {
+    if (js === 'complete') {
+      const n = ui.tactics.filter(t => t.detector === 'judge-llm').length;
+      return `<div class="tactic-provenance ok">Rules \u2713 &middot; AI judge \u2713 &mdash; `
+        + `${n} AI-flagged ${n === 1 ? 'detection' : 'detections'}</div>`;
+    }
+    if (js === 'running') {
+      return `<div class="tactic-provenance pending">Rules \u2713 &middot; AI judge \u23f3 running \u2014 `
+        + `AI-flagged detections will appear here when it finishes.</div>`;
+    }
+    if (js === 'failed') {
+      return `<div class="tactic-provenance warn">Rules \u2713 &middot; AI judge \u2717 failed \u2014 `
+        + `only rule-based detections are shown.</div>`;
+    }
+    return `<div class="tactic-provenance pending">Rules \u2713 &middot; AI judge not run \u2014 `
+      + `everything below is deterministic pattern matching. Absence of a tactic here means `
+      + `no rule fired, not that no tactic was used.</div>`;
+  })();
+
   if (!ui.tactics.length) {
-    el.innerHTML = '<div style="color: var(--muted); padding: 0 14px;">No detections yet.</div>';
+    el.innerHTML = banner + '<div style="color: var(--muted); padding: 0 14px;">No detections yet.</div>';
     return;
   }
-  el.innerHTML = ui.tactics
+  el.innerHTML = banner + ui.tactics
     .slice()
     .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
-    .map(t => `
-      <div class="move-detail" style="margin: 0 14px 8px; cursor: default;">
+    .map(t => {
+      const ai = t.detector === 'judge-llm';
+      return `
+      <div class="move-detail" style="margin: 0 14px 8px; cursor: default;${ai ? 'border-left:2px solid #7c3aed;' : ''}">
         <div class="md-head">
           <span class="md-kind" style="color: var(--warn);">${escapeHtml(t.tacticId)}</span>
           <span class="md-round">R${t.roundNumber}</span>
         </div>
-        <div class="md-text" style="color: var(--muted); font-size: 10px;">${escapeHtml(t.partyTwin)} · ${escapeHtml(t.detector)} · conf ${(t.confidence || 0).toFixed(2)}</div>
+        <div class="md-text" style="color: var(--muted); font-size: 10px;">${escapeHtml(t.partyTwin)} · <span${ai ? ' style="color:#a78bfa"' : ''}>${escapeHtml(ai ? 'AI judge' : t.detector)}</span> · conf ${(t.confidence || 0).toFixed(2)}${t.advisory ? ' · advisory' : ''}</div>
       </div>
-    `).join('');
+    `;
+    }).join('');
 }
 
 function renderRoundActivity() {
@@ -1905,7 +2138,12 @@ async function nextRound() {
     if (orderedTurns.length > 0) {
       ui.staggerRound = res.roundNumber;
       ui.staggerRevealed = new Set();
-      ui.staggerQueue = orderedTurns.map(t => ({ moveId: t.move.id, partyTwin: t.partyTwin }));
+      ui.staggerQueue = orderedTurns.map(t => ({
+        moveId: t.move.id,
+        partyTwin: t.partyTwin,
+        // Carried so the reveal can pace itself by how much there is to read.
+        text: t.move.text || t.move.content || '',
+      }));
       revealNextStaggered();
     }
 
@@ -1968,7 +2206,7 @@ function startPolling() {
       ui.lastTranscript = tr;
       const tacticsRes = await req(`/sessions/${ui.current}/tactics`);
       ui.tactics = tacticsRes.tactics || [];
-
+      ui.judgeStatus = tacticsRes.judgeStatus || null;
       const newRound = (ui.currentSession?.currentRound || 0) + 1;
       const movesThisRound = tr.moves.filter(m => m.roundNumber === newRound);
       // Mark parties whose move has landed as 'done', then promote the first
@@ -2010,20 +2248,26 @@ function revealNextStaggered() {
     return;
   }
   const next = ui.staggerQueue.shift();
-  // First show typing indicator for ~half the delay, then reveal the message.
+  // Typing indicator first, then the message. The "typing" beat is short and
+  // roughly constant — it signals *who* is about to speak, so it should not
+  // grow with the length of what they are about to say. The reading beat after
+  // the reveal is the one that scales.
   ui.staggerSpeakingNow = next.partyTwin;
   if (ui.currentSession && ui.lastTranscript) {
     renderStream(ui.currentSession, ui.lastTranscript);
   }
+  const readMs = paceForText(next.text);
+  const typeMs = Replay.active
+    ? Math.min(1200, Math.round(readMs * 0.25))
+    : Math.floor(STAGGER_DELAY_MS * 0.6);
   ui.staggerTimer = setTimeout(() => {
     ui.staggerRevealed.add(next.moveId);
     ui.staggerSpeakingNow = null;
     if (ui.currentSession && ui.lastTranscript) {
       renderStream(ui.currentSession, ui.lastTranscript);
     }
-    // Schedule next reveal after a short pause
-    ui.staggerTimer = setTimeout(revealNextStaggered, STAGGER_DELAY_MS);
-  }, Math.floor(STAGGER_DELAY_MS * 0.6));
+    ui.staggerTimer = setTimeout(revealNextStaggered, readMs);
+  }, typeMs);
 }
 
 async function recordHumanMove() {
@@ -2547,6 +2791,11 @@ function refreshOpenerOptions() {
 // "View As" doesn't restrict here because the UI is for inspection of declared
 // configuration, not in-session perception.
 async function reqTwin(twinName, path) {
+  // Second seam (DIPL-TICK-006). Team-twin reference data — persona, goals, red
+  // lines, BATNA, tactics — comes from the recorded `context` entry offline.
+  // Without this, every persona panel in a replay showed the apiUrl() guard's
+  // "needs a live backend" instead of the mandate that produced the transcript.
+  if (Replay.active) return Replay.handleTwin(twinName, path);
   const r = await fetch(apiUrl('/' + twinName + path), { headers: apiHeaders() });
   if (!r.ok) throw new Error(`${r.status} ${twinName}${path}`);
   return r.json();
@@ -4507,6 +4756,16 @@ function showReferenceOnlyBanner() {
 const REPLAY_URL = new URLSearchParams(window.location.search).get('log');
 
 async function bootReplay(url) {
+  // Playback speed, in precedence order: explicit ?speed= (so a demo link can
+  // arrive pre-paced for the room it will be shown in), then the presenter's
+  // last choice, then the default. Only values the control offers are accepted —
+  // a stray ?speed=0 would otherwise divide the pace to Infinity and freeze.
+  const qp = new URLSearchParams(window.location.search).get('speed');
+  let saved = null;
+  try { saved = localStorage.getItem('dtsf.replaySpeed'); } catch { /* private mode */ }
+  const wanted = Number(qp || saved);
+  if (PACE.choices.includes(wanted)) PACE.speed = wanted;
+
   try {
     await Replay.load(url);
   } catch (e) {
@@ -4526,7 +4785,6 @@ async function bootReplay(url) {
   Replay.updateChip();
   logEvent(`Replay loaded — ${Replay.entries.length} entries, ${Replay.maxTick + 1} ticks. Advance Round to play.`);
   toast('Offline replay loaded — no backend needed', 'ok');
-
   // If this build ships a gallery, leave a way back to it. A replay that can
   // only be left by editing the URL is a dead end in front of an audience.
   if (await loadRunManifest()) {

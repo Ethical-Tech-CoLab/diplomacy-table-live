@@ -1,19 +1,68 @@
 {
   "v": 1,
-  "generatedAt": "2026-08-02T02:35:07.058Z",
+  "generatedAt": "2026-08-02T05:27:01.847Z",
   "runs": [
+    {
+      "file": "hormuz-full-run-operator.ndjson",
+      "slug": "hormuz-full-run-operator",
+      "label": "Strait of Hormuz - full 4-round run (operator view)",
+      "note": "Two AI delegations, gemma3:12b on both seats, served by the on-box GPU behind the Ethical Tech CoLab proxy. Four substantive rounds, no timeouts, concluded with a full convener debrief.",
+      "sessionId": "sess-1785648343325-a12qcl",
+      "title": "Strait of Hormuz Closure Crisis - Recorded Demonstration Run",
+      "mode": "negotiation",
+      "perspective": "operator",
+      "sensitivity": "OPERATOR — UNREDACTED. Contains every channel, including caucus, sidebar and advisor content.",
+      "redactions": [],
+      "withheldEntries": 0,
+      "parties": [
+        {
+          "teamTwinName": "diplomacy-team-iran",
+          "displayName": "Iran (Araghchi-led MFA + IRGC dual track)",
+          "side": "left"
+        },
+        {
+          "teamTwinName": "diplomacy-team-us",
+          "displayName": "United States (Rubio-led State + CENTCOM)",
+          "side": "right"
+        }
+      ],
+      "models": [
+        "gemma3:12b"
+      ],
+      "rounds": 4,
+      "ticks": 41,
+      "entries": 41,
+      "counts": {
+        "header": 1,
+        "context": 1,
+        "round_begin": 4,
+        "turn_begin": 8,
+        "move": 8,
+        "tactic": 9,
+        "round_end": 4,
+        "round_summary": 4,
+        "session_status": 1,
+        "outcome": 1
+      },
+      "recordedAt": "2026-08-02T05:25:43.374Z",
+      "exportedAt": "2026-08-02T05:27:01.724Z",
+      "bytes": 74243
+    },
     {
       "file": "caucus-demo-iran-view.ndjson",
       "slug": "caucus-demo-iran-view",
       "label": "Ceasefire extension - the same run, as Iran saw it",
-      "note": "Identical run, exported to the Iranian delegation's perspective. The US-E3 caucus is gone. Tick numbers are deliberately NOT renumbered, so the gaps in the sequence are the withheld material - you can see that something was said without seeing what.",
-      "sessionId": "sess-1785637610285-l5x2vj",
+      "note": "Identical run, exported to the Iranian delegation's perspective. The US-E3 caucus is gone, and so are the other delegations' red lines, BATNA and debriefs. Tick numbers are deliberately NOT renumbered, so the gaps in the sequence are the withheld material - you can see that something was said without seeing what.",
+      "sessionId": "sess-1785648302853-yopk3a",
       "title": "Hormuz Ceasefire Extension - Caucus & Perspective Demonstration",
       "mode": "negotiation",
       "perspective": "diplomacy-team-iran",
       "sensitivity": "DELEGATION VIEW (diplomacy-team-iran) — filtered to this party's visibility.",
       "redactions": [
-        "caucus"
+        "caucus",
+        "context",
+        "outcome",
+        "round_summary"
       ],
       "withheldEntries": 2,
       "parties": [
@@ -34,30 +83,33 @@
         }
       ],
       "models": [
-        "llama3.2:1b"
+        "gemma3:12b"
       ],
       "rounds": 3,
-      "ticks": 33,
-      "entries": 32,
+      "ticks": 42,
+      "entries": 41,
       "counts": {
         "header": 1,
-        "move": 7,
-        "tactic": 10,
+        "move": 9,
+        "tactic": 13,
+        "context": 1,
         "round_begin": 3,
         "turn_begin": 6,
         "round_end": 3,
-        "move_placeholder": 2
+        "round_summary": 3,
+        "session_status": 1,
+        "outcome": 1
       },
-      "recordedAt": "2026-08-02T02:26:50.410Z",
-      "exportedAt": "2026-08-02T02:35:06.874Z",
-      "bytes": 15756
+      "recordedAt": "2026-08-02T05:25:03.003Z",
+      "exportedAt": "2026-08-02T05:27:01.197Z",
+      "bytes": 57036
     },
     {
       "file": "caucus-demo-operator.ndjson",
       "slug": "caucus-demo-operator",
       "label": "Ceasefire extension - three seats, with a caucus (OPERATOR view)",
-      "note": "Iran and the US are AI delegations; the E3/EU seat is played by a human facilitator. The US and E3 caucus privately, excluding Iran. This is the unredacted log: the caucus is in it. Compare with the Iran view of the same run.",
-      "sessionId": "sess-1785637610285-l5x2vj",
+      "note": "Iran and the US are AI delegations on gemma3:12b; the E3/EU seat is played by a human facilitator. The US and E3 caucus privately, excluding Iran. This is the unredacted log: the caucus is in it. Includes delegation briefs, per-round summaries and the full session debrief. Compare with the Iran view of the same run.",
+      "sessionId": "sess-1785648302853-yopk3a",
       "title": "Hormuz Ceasefire Extension - Caucus & Perspective Demonstration",
       "mode": "negotiation",
       "perspective": "operator",
@@ -82,66 +134,26 @@
         }
       ],
       "models": [
-        "llama3.2:1b"
+        "gemma3:12b"
       ],
       "rounds": 3,
-      "ticks": 33,
-      "entries": 34,
+      "ticks": 42,
+      "entries": 43,
       "counts": {
         "header": 1,
-        "move": 9,
-        "tactic": 10,
+        "move": 11,
+        "tactic": 13,
+        "context": 1,
         "round_begin": 3,
         "turn_begin": 6,
         "round_end": 3,
-        "move_placeholder": 2
+        "round_summary": 3,
+        "session_status": 1,
+        "outcome": 1
       },
-      "recordedAt": "2026-08-02T02:26:50.410Z",
-      "exportedAt": "2026-08-02T02:35:06.057Z",
-      "bytes": 16938
-    },
-    {
-      "file": "hormuz-full-run-operator.ndjson",
-      "slug": "hormuz-full-run-operator",
-      "label": "Strait of Hormuz - full 4-round run (operator view)",
-      "note": "Two AI delegations, llama3.2:1b on both seats. Round 1 fails cold - both turns time out and are recorded as placeholders - then rounds 2-4 produce substantive exchanges. The failure is replayed as a failure, not hidden.",
-      "sessionId": "sess-1785636607810-zl8g3u",
-      "title": "Strait of Hormuz Closure Crisis - Recorded Demonstration Run",
-      "mode": "negotiation",
-      "perspective": "operator",
-      "sensitivity": "OPERATOR — UNREDACTED. Contains every channel, including caucus, sidebar and advisor content.",
-      "redactions": [],
-      "withheldEntries": 0,
-      "parties": [
-        {
-          "teamTwinName": "diplomacy-team-iran",
-          "displayName": "Iran (Araghchi-led MFA + IRGC dual track)",
-          "side": "left"
-        },
-        {
-          "teamTwinName": "diplomacy-team-us",
-          "displayName": "United States (Rubio-led State + CENTCOM)",
-          "side": "right"
-        }
-      ],
-      "models": [
-        "llama3.2:1b"
-      ],
-      "rounds": 4,
-      "ticks": 31,
-      "entries": 31,
-      "counts": {
-        "header": 1,
-        "round_begin": 4,
-        "turn_begin": 8,
-        "move_placeholder": 2,
-        "round_end": 4,
-        "move": 6,
-        "tactic": 6
-      },
-      "recordedAt": "2026-08-02T02:10:07.895Z",
-      "exportedAt": "2026-08-02T02:34:11.654Z",
-      "bytes": 16609
+      "recordedAt": "2026-08-02T05:25:03.003Z",
+      "exportedAt": "2026-08-02T05:26:38.324Z",
+      "bytes": 76987
     }
   ]
 }
