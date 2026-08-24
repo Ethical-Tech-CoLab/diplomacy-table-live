@@ -2099,7 +2099,7 @@ function renderTactics() {
               ? `<div class="md-text dt-dispute">disputes the rule pass on this move</div>` : ''}`
         : '';
       return `
-      <div class="move-detail" style="margin: 0 14px 8px; cursor: default;${ai ? 'border-left:2px solid #7c3aed;' : ''}">
+      <div class="move-detail" data-detector="${escapeHtml(t.detector)}" style="margin: 0 14px 8px; cursor: default;${ai ? 'border-left:2px solid #7c3aed;' : ''}">
         <div class="md-head">
           <span class="md-kind" style="color: var(--warn);">${escapeHtml(t.tacticId)}</span>
           <span class="md-round">R${t.roundNumber}</span>
